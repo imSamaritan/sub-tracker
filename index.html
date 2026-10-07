@@ -157,26 +157,17 @@
         <div class="mb-4">
           <div class="is-flex is-justify-content-space-between is-align-items-center mb-2">
             <span class="is-size-7 has-text-weight-semibold" style="color: var(--text-muted); text-transform: uppercase;">Quick Add SA Favorites</span>
-            <button class="is-size-7 has-text-link" style="background: none; border: none; cursor: pointer; color: #818cf8 !important;" @click="$store.app.isPresetPickerOpen = true">
-              See All Presets
+            <button class="is-size-7 has-text-link" style="background: none; border: none; cursor: pointer; color: #818cf8 !important;" @click="$store.app.openAddModal(); $store.app.isPresetPickerOpen = true">
+              See All Presets (<span x-text="SA_PRESETS.length"></span>)
             </button>
           </div>
           <div class="filter-scroll-container">
-            <button class="filter-chip" @click="$store.app.openAddModal({ name: 'Showmax', category: 'Entertainment', amount: 99, cycle: 'monthly', icon: 'fa-tv', color: '#0084f7' })">
-              <i class="fa-solid fa-tv mr-1" style="color: #0084f7;"></i> Showmax (R99)
-            </button>
-            <button class="filter-chip" @click="$store.app.openAddModal({ name: 'DSTV Stream', category: 'Entertainment', amount: 799, cycle: 'monthly', icon: 'fa-satellite-dish', color: '#005ea6' })">
-              <i class="fa-solid fa-satellite-dish mr-1" style="color: #005ea6;"></i> DSTV (R799)
-            </button>
-            <button class="filter-chip" @click="$store.app.openAddModal({ name: 'Spotify Individual', category: 'Music', amount: 64.99, cycle: 'monthly', icon: 'fa-music', color: '#1db954' })">
-              <i class="fa-solid fa-music mr-1" style="color: #1db954;"></i> Spotify (R65)
-            </button>
-            <button class="filter-chip" @click="$store.app.openAddModal({ name: 'Vodacom Fibre', category: 'Internet', amount: 799, cycle: 'monthly', icon: 'fa-wifi', color: '#e60000' })">
-              <i class="fa-solid fa-wifi mr-1" style="color: #e60000;"></i> Vodacom (R799)
-            </button>
-            <button class="filter-chip" @click="$store.app.openAddModal({ name: 'Virgin Active / Gym', category: 'Fitness', amount: 450, cycle: 'monthly', icon: 'fa-dumbbell', color: '#e11d48' })">
-              <i class="fa-solid fa-dumbbell mr-1" style="color: #e11d48;"></i> Gym (R450)
-            </button>
+            <template x-for="p in SA_PRESETS" :key="p.name">
+              <button class="filter-chip" @click="$store.app.openAddModal(p)">
+                <i :class="`fa-solid ${p.icon} mr-1`" :style="{ color: p.color }"></i>
+                <span x-text="`${p.name} (${SubUtils.formatZAR(p.amount)}${p.cycle === 'yearly' ? '/yr' : ''})`"></span>
+              </button>
+            </template>
           </div>
         </div>
 
@@ -553,25 +544,34 @@
 
         <!-- Quick Pick Preset button (when adding) -->
         <template x-if="!$store.app.formSub.id">
-          <div class="mb-3">
+          <div class="mb-3" x-data="{ presetFilter: '' }">
             <button class="button is-dark is-small is-rounded is-fullwidth" style="background: rgba(99,102,241,0.15); color: #a5b4fc; border: 1px solid rgba(99,102,241,0.3);" @click="$store.app.isPresetPickerOpen = !$store.app.isPresetPickerOpen">
               <i class="fa-solid fa-wand-magic-sparkles mr-2"></i>
               <span x-text="$store.app.isPresetPickerOpen ? 'Hide SA Presets' : 'Choose from Popular SA Presets'"></span>
             </button>
 
             <!-- Preset Selection Grid -->
-            <div class="preset-grid" x-show="$store.app.isPresetPickerOpen" x-transition>
-              <template x-for="p in SA_PRESETS" :key="p.name">
-                <div class="preset-card-item" @click="$store.app.openAddModal(p)">
-                  <div class="sub-icon-box" :style="{ backgroundColor: p.color, width: '30px', height: '30px', fontSize: '0.8rem' }">
-                    <i :class="`fa-solid ${p.icon}`"></i>
-                  </div>
-                  <div>
-                    <div class="is-size-7 has-text-weight-bold" style="color: white;" x-text="p.name"></div>
-                    <div class="is-size-7" style="color: #94a3b8;" x-text="SubUtils.formatZAR(p.amount)"></div>
-                  </div>
+            <div x-show="$store.app.isPresetPickerOpen" x-transition class="mt-2">
+              <div class="field mb-2">
+                <div class="control has-icons-left">
+                  <input class="input is-small is-rounded" type="text" placeholder="Search presets (Canva, Rent, Airtime, Hosting...)" x-model="presetFilter" style="background: rgba(255,255,255,0.06); border-color: rgba(99,102,241,0.25); color: white;">
+                  <span class="icon is-small is-left" style="color: var(--text-muted);"><i class="fa-solid fa-magnifying-glass"></i></span>
                 </div>
-              </template>
+              </div>
+
+              <div class="preset-grid">
+                <template x-for="p in SA_PRESETS.filter(item => !presetFilter || item.name.toLowerCase().includes(presetFilter.toLowerCase()) || (item.category && item.category.toLowerCase().includes(presetFilter.toLowerCase())) || (item.notes && item.notes.toLowerCase().includes(presetFilter.toLowerCase())))" :key="p.name">
+                  <div class="preset-card-item" @click="$store.app.openAddModal(p)" :title="p.notes || p.name">
+                    <div class="sub-icon-box" :style="{ backgroundColor: p.color, width: '32px', height: '32px', fontSize: '0.85rem' }">
+                      <i :class="`fa-solid ${p.icon}`"></i>
+                    </div>
+                    <div style="min-width: 0; overflow: hidden;">
+                      <div class="is-size-7 has-text-weight-bold" style="color: white; line-height: 1.25;" x-text="p.name"></div>
+                      <div class="is-size-7" style="color: #94a3b8;" x-text="p.cycle === 'yearly' ? `${SubUtils.formatZAR(p.amount)}/yr` : SubUtils.formatZAR(p.amount)"></div>
+                    </div>
+                  </div>
+                </template>
+              </div>
             </div>
           </div>
         </template>
@@ -629,12 +629,16 @@
                     <select x-model="$store.app.formSub.category">
                       <option value="Entertainment">Entertainment</option>
                       <option value="Music">Music</option>
-                      <option value="Internet">Internet / Telco</option>
+                      <option value="Internet">Internet / Fibre</option>
+                      <option value="Telco">Telco / Airtime / Mobile</option>
                       <option value="Fitness">Fitness / Gym</option>
                       <option value="Health">Health / Medical</option>
-                      <option value="Cloud">Cloud / Storage</option>
-                      <option value="Software">Software</option>
+                      <option value="Cloud">Cloud / Storage / Hosting</option>
+                      <option value="Software">Software / Tools</option>
                       <option value="Insurance">Insurance</option>
+                      <option value="Housing">Housing / Rent</option>
+                      <option value="Food">Groceries / Food</option>
+                      <option value="Family">Family Support</option>
                       <option value="Other">Other</option>
                     </select>
                   </div>
@@ -652,7 +656,18 @@
                   <option value="fa-tv">📺 TV / Video</option>
                   <option value="fa-film">🎬 Cinema / Movies</option>
                   <option value="fa-music">🎵 Music</option>
+                  <option value="fa-play">▶️ Media Player / YouTube</option>
+                  <option value="fa-palette">🎨 Design / Canva</option>
+                  <option value="fa-bolt">⚡ AI / Software (Antigravity)</option>
+                  <option value="fa-shield-halved">🛡️ Insurance</option>
+                  <option value="fa-mobile-screen">📱 Mobile / FoneYam</option>
+                  <option value="fa-phone">📞 Airtime / Calls</option>
                   <option value="fa-wifi">📡 Wi-Fi / Fibre</option>
+                  <option value="fa-house">🏠 Rent / Accommodation</option>
+                  <option value="fa-cart-shopping">🛒 Groceries / Food</option>
+                  <option value="fa-users">👥 Family Support</option>
+                  <option value="fa-server">🖥️ Web Server / VPS</option>
+                  <option value="fa-globe">🌐 Domain Name</option>
                   <option value="fa-dumbbell">🏋️ Gym / Fitness</option>
                   <option value="fa-cloud">☁️ Cloud Storage</option>
                   <option value="fa-heart-pulse">❤️ Vitality / Health</option>
