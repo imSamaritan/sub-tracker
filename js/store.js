@@ -6,18 +6,29 @@
 
 // Preset subscriptions popular in South Africa
 const SA_PRESETS = [
-  { name: 'Showmax', category: 'Entertainment', amount: 99, cycle: 'monthly', icon: 'fa-tv', color: '#0084f7' },
-  { name: 'Netflix', category: 'Entertainment', amount: 159, cycle: 'monthly', icon: 'fa-film', color: '#e50914' },
-  { name: 'Spotify Individual', category: 'Music', amount: 64.99, cycle: 'monthly', icon: 'fa-music', color: '#1db954' },
-  { name: 'DSTV Stream', category: 'Entertainment', amount: 799, cycle: 'monthly', icon: 'fa-satellite-dish', color: '#005ea6' },
-  { name: 'YouTube Premium', category: 'Entertainment', amount: 72.99, cycle: 'monthly', icon: 'fa-play', color: '#ff0000' },
-  { name: 'Vodacom Fibre', category: 'Internet', amount: 799, cycle: 'monthly', icon: 'fa-wifi', color: '#e60000' },
-  { name: 'MTN 5G / Fibre', category: 'Internet', amount: 699, cycle: 'monthly', icon: 'fa-signal', color: '#ffcc00' },
-  { name: 'Virgin Active / Gym', category: 'Fitness', amount: 450, cycle: 'monthly', icon: 'fa-dumbbell', color: '#e11d48' },
-  { name: 'Discovery Vitality', category: 'Health', amount: 350, cycle: 'monthly', icon: 'fa-heart-pulse', color: '#f59e0b' },
-  { name: 'iCloud 200GB', category: 'Cloud', amount: 44.99, cycle: 'monthly', icon: 'fa-cloud', color: '#3b82f6' },
-  { name: 'Google One 100GB', category: 'Cloud', amount: 29.99, cycle: 'monthly', icon: 'fa-database', color: '#10b981' },
-  { name: 'Apple Music', category: 'Music', amount: 69.99, cycle: 'monthly', icon: 'fa-headphones', color: '#fa2d48' }
+  { name: 'Showmax', category: 'Entertainment', amount: 99, cycle: 'monthly', icon: 'fa-tv', color: '#0084f7', notes: 'Showmax entertainment' },
+  { name: 'Netflix', category: 'Entertainment', amount: 159, cycle: 'monthly', icon: 'fa-film', color: '#e50914', notes: 'Netflix Standard plan' },
+  { name: 'Spotify Individual', category: 'Music', amount: 64.99, cycle: 'monthly', icon: 'fa-music', color: '#1db954', notes: 'Spotify Individual' },
+  { name: 'YouTube Music', category: 'Music', amount: 64.99, cycle: 'monthly', icon: 'fa-play', color: '#ff0000', notes: 'YouTube Music Premium Individual' },
+  { name: 'DSTV Stream', category: 'Entertainment', amount: 799, cycle: 'monthly', icon: 'fa-satellite-dish', color: '#005ea6', notes: 'DSTV Stream' },
+  { name: 'YouTube Premium', category: 'Entertainment', amount: 72.99, cycle: 'monthly', icon: 'fa-play', color: '#ff0000', notes: 'YouTube Premium' },
+  { name: 'Canva (Graphic Design)', category: 'Software', amount: 159, cycle: 'monthly', icon: 'fa-palette', color: '#00c4cc', notes: 'Canva.com graphics design tool' },
+  { name: 'Antigravity Pro', category: 'Software', amount: 350, cycle: 'monthly', icon: 'fa-bolt', color: '#8b5cf6', notes: 'Antigravity Pro AI Coding Assistant' },
+  { name: 'The Unlimited Insurance', category: 'Insurance', amount: 199, cycle: 'monthly', icon: 'fa-shield-halved', color: '#dc2626', notes: 'Unlimited Insurance in South Africa' },
+  { name: 'FoneYam', category: 'Telco', amount: 299, cycle: 'monthly', icon: 'fa-mobile-screen', color: '#0284c7', notes: 'FoneYam smartphone rental' },
+  { name: 'Airtime', category: 'Telco', amount: 150, cycle: 'monthly', icon: 'fa-phone', color: '#f59e0b', notes: 'Prepaid airtime and mobile data' },
+  { name: 'Accommodation / Rent', category: 'Housing', amount: 4500, cycle: 'monthly', icon: 'fa-house', color: '#10b981', notes: 'Accommondation Rent / apartment rent' },
+  { name: 'Groceries / Food', category: 'Food', amount: 2500, cycle: 'monthly', icon: 'fa-cart-shopping', color: '#16a34a', notes: 'Grossary / Food expenses' },
+  { name: 'Family Support', category: 'Family', amount: 1500, cycle: 'monthly', icon: 'fa-users', color: '#f43f5e', notes: 'Monthly family support' },
+  { name: 'Absolute Hosting Server', category: 'Cloud', amount: 129, cycle: 'monthly', icon: 'fa-server', color: '#2563eb', notes: 'Absolute Hosting VPS / Server' },
+  { name: 'Absolute Hosting Domain', category: 'Cloud', amount: 105, cycle: 'yearly', icon: 'fa-globe', color: '#0ea5e9', notes: 'Absolute Hosting Domain .co.za renewal' },
+  { name: 'Vodacom Fibre', category: 'Internet', amount: 799, cycle: 'monthly', icon: 'fa-wifi', color: '#e60000', notes: 'Vodacom Home Fibre' },
+  { name: 'MTN 5G / Fibre', category: 'Internet', amount: 699, cycle: 'monthly', icon: 'fa-signal', color: '#ffcc00', notes: 'MTN 5G / Fibre uncapped' },
+  { name: 'Virgin Active / Gym', category: 'Fitness', amount: 450, cycle: 'monthly', icon: 'fa-dumbbell', color: '#e11d48', notes: 'Virgin Active gym membership' },
+  { name: 'Discovery Vitality', category: 'Health', amount: 350, cycle: 'monthly', icon: 'fa-heart-pulse', color: '#f59e0b', notes: 'Discovery Vitality wellness' },
+  { name: 'iCloud 200GB', category: 'Cloud', amount: 44.99, cycle: 'monthly', icon: 'fa-cloud', color: '#3b82f6', notes: 'Apple iCloud 200GB storage' },
+  { name: 'Google One 100GB', category: 'Cloud', amount: 29.99, cycle: 'monthly', icon: 'fa-database', color: '#10b981', notes: 'Google One 100GB storage' },
+  { name: 'Apple Music', category: 'Music', amount: 69.99, cycle: 'monthly', icon: 'fa-headphones', color: '#fa2d48', notes: 'Apple Music subscription' }
 ];
 
 const DEFAULT_SAMPLE_DATA = {
@@ -374,7 +385,7 @@ document.addEventListener('alpine:init', () => {
           icon: preset.icon || 'fa-tv',
           color: preset.color || '#0084f7',
           isPaidThisCycle: false,
-          notes: ''
+          notes: preset.notes || ''
         };
       } else {
         this.formSub = {

@@ -553,6 +553,27 @@ html, body {
   grid-template-columns: repeat(2, 1fr);
   gap: 10px;
   margin-top: 10px;
+  max-height: 290px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.preset-grid::-webkit-scrollbar {
+  width: 5px;
+}
+
+.preset-grid::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 4px;
+}
+
+.preset-grid::-webkit-scrollbar-thumb {
+  background: rgba(99, 102, 241, 0.4);
+  border-radius: 4px;
+}
+
+.preset-grid::-webkit-scrollbar-thumb:hover {
+  background: rgba(99, 102, 241, 0.7);
 }
 
 .preset-card-item {

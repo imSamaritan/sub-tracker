@@ -19,7 +19,7 @@ SubTracker is a sleek, Progressive Web App (PWA) designed to track recurring sub
   - **In-App Notification Center**: Quick-glance alert bell with badge counter.
   - **Browser Web Notifications API**: System push notifications for upcoming bills (1–2 days prior).
 - **Popular South African Presets**:
-  - One-tap quick adds with accurate pricing for **Showmax (R99)**, **DSTV Stream (R799)**, **Spotify (R64.99)**, **Vodacom Fibre (R849)**, **MTN 5G (R699)**, **Virgin Active (R450)**, and more.
+  - One-tap quick adds with accurate pricing for **Showmax (R99)**, **DSTV Stream (R799)**, **Spotify (R64.99)**, **YouTube Music (R64.99)**, **Canva (R159)**, **Antigravity Pro (R350)**, **The Unlimited Insurance (R199)**, **FoneYam (R299)**, **Airtime (R150)**, **Accommodation / Rent (R4500)**, **Groceries / Food (R2500)**, **Family Support (R1500)**, **Absolute Hosting Server (R129)**, **Absolute Hosting Domain (R105/yr)**, and more.
 - **Modular Data Architecture**:
   - Persistent mock database using browser `localStorage` via a decoupled `StorageRepository`.
   - JSON Backup Export and Import/Restore.
