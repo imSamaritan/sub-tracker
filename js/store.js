@@ -26,7 +26,8 @@ const DEFAULT_SAMPLE_DATA = {
     salaryDay: 25,
     currency: 'ZAR',
     currencySymbol: 'R',
-    systemNotificationsEnabled: false
+    systemNotificationsEnabled: false,
+    theme: 'dark'
   },
   subscriptions: [
     {
@@ -179,8 +180,10 @@ document.addEventListener('alpine:init', () => {
       salaryDay: 25,
       currency: 'ZAR',
       currencySymbol: 'R',
-      systemNotificationsEnabled: false
+      systemNotificationsEnabled: false,
+      theme: 'dark'
     },
+    theme: 'dark', // 'dark' | 'light'
     subscriptions: [],
     paymentHistory: [],
 
@@ -229,6 +232,10 @@ document.addEventListener('alpine:init', () => {
       this.subscriptions = data.subscriptions || [];
       this.paymentHistory = data.paymentHistory || [];
       this.salaryInput = this.profile.monthlySalary;
+
+      // Initialize theme from localStorage or profile (fallback to 'dark')
+      const savedTheme = localStorage.getItem('subtracker_theme') || this.profile.theme || 'dark';
+      this.setTheme(savedTheme, false);
 
       // Check notification permissions and trigger daily scan
       setTimeout(() => {
@@ -557,6 +564,35 @@ document.addEventListener('alpine:init', () => {
         this.salaryInput = this.profile.monthlySalary;
         this.persist();
         this.triggerToast('Reset to demo South African data', 'is-info');
+      }
+    },
+
+    // ----------------------------------------------------
+    // Theme Mode Management (Dark & Light Mode)
+    // ----------------------------------------------------
+    toggleTheme() {
+      const nextTheme = this.theme === 'dark' ? 'light' : 'dark';
+      this.setTheme(nextTheme, true);
+    },
+
+    setTheme(newTheme, showToastNotice = true) {
+      this.theme = newTheme === 'light' ? 'light' : 'dark';
+      this.profile.theme = this.theme;
+      
+      // Persist to both independent key and profile DB
+      localStorage.setItem('subtracker_theme', this.theme);
+      document.documentElement.setAttribute('data-theme', this.theme);
+
+      // Update mobile browser status bar theme color
+      const metaTheme = document.querySelector('meta[name="theme-color"]');
+      if (metaTheme) {
+        metaTheme.setAttribute('content', this.theme === 'light' ? '#f1f5f9' : '#0a0e17');
+      }
+
+      this.persist();
+
+      if (showToastNotice) {
+        this.triggerToast(`Switched to ${this.theme === 'dark' ? 'Dark' : 'Light'} Mode`, 'is-info');
       }
     }
   });

@@ -54,6 +54,11 @@
           <i class="fa-solid fa-money-bill-wave" style="color: #10b981;"></i>
         </button>
 
+        <!-- Theme Mode Toggle Button -->
+        <button class="icon-btn-round" @click="$store.app.toggleTheme()" :title="$store.app.theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'" id="theme-toggle-btn">
+          <i :class="$store.app.theme === 'dark' ? 'fa-solid fa-sun' : 'fa-solid fa-moon'" :style="{ color: $store.app.theme === 'dark' ? '#fbbf24' : '#6366f1' }"></i>
+        </button>
+
         <!-- Notification Bell -->
         <button class="icon-btn-round" @click="$store.app.isAlertsDrawerOpen = true" title="View Due Date Alerts">
           <i class="fa-solid fa-bell"></i>
@@ -399,6 +404,38 @@
         <div class="mb-4">
           <h2 class="has-text-weight-bold is-size-5" style="color: white; margin: 0;">Budget & Settings</h2>
           <p class="is-size-7" style="color: var(--text-muted);">Configure income, mock database & backup</p>
+        </div>
+
+        <!-- Appearance & Theme Mode Card -->
+        <div class="glass-panel p-4 mb-4">
+          <h3 class="has-text-weight-semibold is-size-6 mb-2" style="color: #a5b4fc;">
+            <i class="fa-solid fa-circle-half-stroke mr-1"></i> Appearance & Theme
+          </h3>
+          <p class="is-size-7 mb-3" style="color: var(--text-muted);">
+            Choose your preferred display theme. Your selection is automatically saved in your preferences.
+          </p>
+          <div class="field">
+            <div class="columns is-mobile is-variable is-2">
+              <div class="column is-6">
+                <button type="button" 
+                        class="button is-fullwidth" 
+                        :class="$store.app.theme === 'dark' ? 'is-primary' : 'is-dark'"
+                        style="border-radius: var(--radius-md); font-weight: 600;"
+                        @click="$store.app.setTheme('dark')">
+                  <i class="fa-solid fa-moon mr-2" :style="{ color: $store.app.theme === 'dark' ? '#ffffff' : '#818cf8' }"></i> Dark Mode
+                </button>
+              </div>
+              <div class="column is-6">
+                <button type="button" 
+                        class="button is-fullwidth" 
+                        :class="$store.app.theme === 'light' ? 'is-primary' : 'is-dark'"
+                        style="border-radius: var(--radius-md); font-weight: 600;"
+                        @click="$store.app.setTheme('light')">
+                  <i class="fa-solid fa-sun mr-2" :style="{ color: $store.app.theme === 'light' ? '#ffffff' : '#f59e0b' }"></i> Light Mode
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- Income Profile Card -->
