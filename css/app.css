@@ -229,6 +229,55 @@ html, body {
   font-size: 1.05rem;
 }
 
+/* Hero Balance Card - Responsive Metrics Grid */
+.hero-balance-card .metric-pill {
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+/* On mobile viewports:
+   Salary card spans the full width (all 12 columns) from left to right.
+   Total subs and Paid / left each take 6 columns with a 5px gap.
+   On tablet devices and larger:
+   Keeps the original 3-column side-by-side layout intact. */
+@media screen and (max-width: 768px) {
+  .hero-balance-card .columns {
+    display: grid !important;
+    grid-template-columns: repeat(12, 1fr) !important;
+    gap: 5px !important;
+    margin: 0.75rem 0 0 0 !important;
+  }
+
+  .hero-balance-card .columns > .column {
+    padding: 0 !important;
+    margin: 0 !important;
+    width: auto !important;
+    max-width: none !important;
+    flex: none !important;
+    min-width: 0 !important;
+  }
+
+  /* Salary card spans all 12 columns from left to right */
+  .hero-balance-card .columns > .column:nth-child(1) {
+    grid-column: span 12 !important;
+  }
+
+  /* Total subs card takes 6 columns */
+  .hero-balance-card .columns > .column:nth-child(2) {
+    grid-column: span 6 !important;
+  }
+
+  /* Paid / left card takes 6 columns */
+  .hero-balance-card .columns > .column:nth-child(3) {
+    grid-column: span 6 !important;
+  }
+
+  .hero-balance-card .columns > .column .metric-pill {
+    height: 100% !important;
+    width: 100% !important;
+  }
+}
+
 /* Custom Progress Meter */
 .budget-progress-container {
   height: 8px;
