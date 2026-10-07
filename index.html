@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+  <title>SubTracker - Rand Budget & Subscriptions</title>
+  <meta name="description" content="Mobile Subscription Tracker & Salary Balance Budget Manager for South Africa">
+  <meta name="theme-color" content="#0a0e17">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/svg+xml" href="assets/icons/icon-192.svg">
+  <link rel="apple-touch-icon" href="assets/icons/icon-192.svg">
+
+  <!-- Bulma CSS CDN -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.2/css/bulma.min.css">
+  <!-- Font Awesome CDN -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <!-- Custom App CSS -->
+  <link rel="stylesheet" href="css/app.css">
+
+  <!-- App Core Logic -->
+  <script src="js/utils.js"></script>
+  <script src="js/notifications.js"></script>
+  <script src="js/store.js"></script>
+
+  <!-- Alpine.js CDN (defer) -->
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
+</head>
+<body>
+
+  <!-- App Mobile Shell -->
+  <div class="mobile-app-shell" x-data>
+
+    <!-- Top Sticky Header -->
+    <header class="app-header is-flex is-justify-content-space-between is-align-items-center">
+      <div class="is-flex is-align-items-center" style="gap: 10px;">
+        <div class="icon-btn-round" style="background: var(--accent-primary-gradient); color: white; border: none;">
+          <i class="fa-solid fa-wallet"></i>
+        </div>
+        <div>
+          <div class="is-flex is-align-items-center" style="gap: 6px;">
+            <h1 class="has-text-weight-bold is-size-5" style="color: white; margin: 0; line-height: 1.2;">SubTracker</h1>
+            <span class="brand-badge">🇿🇦 ZAR</span>
+          </div>
+          <p class="is-size-7" style="color: var(--text-muted); margin: 0;">Budget & Due Tracker</p>
+        </div>
+      </div>
+
+      <!-- Header Action Buttons -->
+      <div class="is-flex is-align-items-center" style="gap: 8px;">
+        <!-- Salary quick edit -->
+        <button class="icon-btn-round" @click="$store.app.salaryInput = $store.app.profile.monthlySalary; $store.app.isSalaryModalOpen = true" title="Adjust Salary">
+          <i class="fa-solid fa-money-bill-wave" style="color: #10b981;"></i>
+        </button>
+
+        <!-- Notification Bell -->
+        <button class="icon-btn-round" @click="$store.app.isAlertsDrawerOpen = true" title="View Due Date Alerts">
+          <i class="fa-solid fa-bell"></i>
+          <span class="notification-badge" x-show="$store.app.alertCount > 0" x-text="$store.app.alertCount" x-cloak></span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Global Toast Banner -->
+    <div class="app-toast" :class="$store.app.toast.type" x-show="$store.app.toast.show" x-transition.opacity.duration.300ms x-cloak>
+      <div class="is-flex is-align-items-center" style="gap: 8px;">
+        <i class="fa-solid fa-circle-check"></i>
+        <span x-text="$store.app.toast.message"></span>
+      </div>
+      <button class="delete is-small" @click="$store.app.toast.show = false"></button>
+    </div>
+
+    <!-- MAIN BODY SECTIONS -->
+    <main class="p-4">
+
+      <!-- ================================================================= -->
+      <!-- TAB 1: DASHBOARD VIEW                                             -->
+      <!-- ================================================================= -->
+      <div x-show="$store.app.activeTab === 'dashboard'" x-transition.opacity>
+
+        <!-- Master Balance Hero Card -->
+        <div class="hero-balance-card mb-4">
+          <div class="is-flex is-justify-content-space-between is-align-items-flex-start mb-2">
+            <div>
+              <span class="metric-title" style="color: #94a3b8;">Remaining Balance</span>
+              <div class="balance-amount mt-1" x-text="SubUtils.formatZAR($store.app.remainingBalance)"></div>
+            </div>
+            <button class="button is-small is-dark is-rounded" style="background: rgba(255,255,255,0.08); border-color: var(--border-glass);" @click="$store.app.isSalaryModalOpen = true">
+              <span class="icon is-small"><i class="fa-solid fa-pen"></i></span>
+              <span>Edit Salary</span>
+            </button>
+          </div>
+
+          <!-- Budget Utilization Bar -->
+          <div class="mt-3">
+            <div class="is-flex is-justify-content-space-between is-size-7 mb-1">
+              <span style="color: var(--text-muted);">Committed to Subscriptions</span>
+              <span class="has-text-weight-bold" :style="{ color: $store.app.budgetStatusColor }" x-text="`${$store.app.budgetUtilizationPercent}% of Salary`"></span>
+            </div>
+            <div class="budget-progress-container">
+              <div class="budget-progress-fill" :style="{ width: `${$store.app.budgetUtilizationPercent}%`, backgroundColor: $store.app.budgetStatusColor }"></div>
+            </div>
+          </div>
+
+          <!-- Mini Metrics Grid -->
+          <div class="columns is-mobile mt-3 is-variable is-2">
+            <div class="column is-4">
+              <div class="metric-pill">
+                <div class="metric-title">Salary</div>
+                <div class="metric-value" style="color: #10b981;" x-text="SubUtils.formatZAR($store.app.totalSalary)"></div>
+              </div>
+            </div>
+            <div class="column is-4">
+              <div class="metric-pill">
+                <div class="metric-title">Total Subs</div>
+                <div class="metric-value" style="color: #f59e0b;" x-text="SubUtils.formatZAR($store.app.totalCommittedExpenses)"></div>
+              </div>
+            </div>
+            <div class="column is-4">
+              <div class="metric-pill">
+                <div class="metric-title">Paid / Left</div>
+                <div class="metric-value is-size-7" style="color: #a5b4fc;">
+                  <span style="color: #10b981;" x-text="SubUtils.formatZAR($store.app.totalPaidThisMonth)"></span> / 
+                  <span style="color: #f87171;" x-text="SubUtils.formatZAR($store.app.totalDueThisMonth)"></span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Urgency Alert Banner (if overdue or due in <= 3 days) -->
+        <template x-if="$store.app.alertCount > 0">
+          <div class="glass-panel p-3 mb-4" style="background: rgba(245, 158, 11, 0.1); border-color: rgba(245, 158, 11, 0.3);">
+            <div class="is-flex is-justify-content-space-between is-align-items-center">
+              <div class="is-flex is-align-items-center" style="gap: 10px;">
+                <span class="icon" style="color: #f59e0b;"><i class="fa-solid fa-triangle-exclamation"></i></span>
+                <div>
+                  <div class="has-text-weight-bold is-size-7" style="color: #fbbf24;" x-text="`${$store.app.alertCount} Bill${$store.app.alertCount > 1 ? 's' : ''} Need Attention`"></div>
+                  <div class="is-size-7" style="color: var(--text-muted);">Upcoming or overdue payments</div>
+                </div>
+              </div>
+              <button class="button is-small is-warning is-light is-rounded" @click="$store.app.isAlertsDrawerOpen = true">
+                <span>View</span>
+                <span class="icon is-small"><i class="fa-solid fa-arrow-right"></i></span>
+              </button>
+            </div>
+          </div>
+        </template>
+
+        <!-- Quick Add Preset Chips (South Africa Favorites) -->
+        <div class="mb-4">
+          <div class="is-flex is-justify-content-space-between is-align-items-center mb-2">
+            <span class="is-size-7 has-text-weight-semibold" style="color: var(--text-muted); text-transform: uppercase;">Quick Add SA Favorites</span>
+            <button class="is-size-7 has-text-link" style="background: none; border: none; cursor: pointer; color: #818cf8 !important;" @click="$store.app.isPresetPickerOpen = true">
+              See All Presets
+            </button>
+          </div>
+          <div class="filter-scroll-container">
+            <button class="filter-chip" @click="$store.app.openAddModal({ name: 'Showmax', category: 'Entertainment', amount: 99, cycle: 'monthly', icon: 'fa-tv', color: '#0084f7' })">
+              <i class="fa-solid fa-tv mr-1" style="color: #0084f7;"></i> Showmax (R99)
+            </button>
+            <button class="filter-chip" @click="$store.app.openAddModal({ name: 'DSTV Stream', category: 'Entertainment', amount: 799, cycle: 'monthly', icon: 'fa-satellite-dish', color: '#005ea6' })">
+              <i class="fa-solid fa-satellite-dish mr-1" style="color: #005ea6;"></i> DSTV (R799)
+            </button>
+            <button class="filter-chip" @click="$store.app.openAddModal({ name: 'Spotify Individual', category: 'Music', amount: 64.99, cycle: 'monthly', icon: 'fa-music', color: '#1db954' })">
+              <i class="fa-solid fa-music mr-1" style="color: #1db954;"></i> Spotify (R65)
+            </button>
+            <button class="filter-chip" @click="$store.app.openAddModal({ name: 'Vodacom Fibre', category: 'Internet', amount: 799, cycle: 'monthly', icon: 'fa-wifi', color: '#e60000' })">
+              <i class="fa-solid fa-wifi mr-1" style="color: #e60000;"></i> Vodacom (R799)
+            </button>
+            <button class="filter-chip" @click="$store.app.openAddModal({ name: 'Virgin Active / Gym', category: 'Fitness', amount: 450, cycle: 'monthly', icon: 'fa-dumbbell', color: '#e11d48' })">
+              <i class="fa-solid fa-dumbbell mr-1" style="color: #e11d48;"></i> Gym (R450)
+            </button>
+          </div>
+        </div>
+
+        <!-- Upcoming Subscriptions List (Upcoming Due First) -->
+        <div class="mb-5">
+          <div class="is-flex is-justify-content-space-between is-align-items-center mb-3">
+            <h2 class="has-text-weight-bold is-size-6" style="color: white; margin: 0;">Upcoming Due Dates</h2>
+            <button class="button is-ghost is-small p-0" style="color: #818cf8;" @click="$store.app.activeTab = 'subscriptions'">
+              <span>View All (<span x-text="$store.app.subscriptions.length"></span>)</span>
+            </button>
+          </div>
+
+          <template x-if="$store.app.subscriptions.length === 0">
+            <div class="glass-panel p-5 has-text-centered">
+              <i class="fa-solid fa-receipt fa-2x mb-3" style="color: var(--text-dim);"></i>
+              <p class="has-text-weight-medium">No subscriptions tracked yet</p>
+              <p class="is-size-7 mb-3" style="color: var(--text-muted);">Start by adding your Showmax, DSTV, Spotify or internet bills.</p>
+              <button class="button is-primary is-small is-rounded" @click="$store.app.openAddModal()">
+                <i class="fa-solid fa-plus mr-1"></i> Add First Subscription
+              </button>
+            </div>
+          </template>
+
+          <template x-for="sub in $store.app.filteredSubscriptions.slice(0, 5)" :key="sub.id">
+            <div class="sub-card" :class="{ 'is-paid-card': sub.isPaidThisCycle }">
+              <div class="is-flex is-justify-content-space-between is-align-items-center">
+                <!-- Left: Icon & Details -->
+                <div class="is-flex is-align-items-center" style="gap: 12px; min-width: 0;">
+                  <div class="sub-icon-box" :style="{ backgroundColor: sub.color || '#6366f1' }">
+                    <i :class="`fa-solid ${sub.icon || 'fa-receipt'}`"></i>
+                  </div>
+                  <div style="min-width: 0;">
+                    <div class="has-text-weight-bold is-size-6 is-truncated" style="color: white;" x-text="sub.name"></div>
+                    <div class="is-flex is-align-items-center mt-1" style="gap: 6px;">
+                      <span class="status-pill" :class="SubUtils.getUrgencyMeta(sub.dueDate, sub.isPaidThisCycle).badgeClass" x-text="SubUtils.getUrgencyMeta(sub.dueDate, sub.isPaidThisCycle).label"></span>
+                      <span class="is-size-7" style="color: var(--text-dim);" x-text="`Due ${SubUtils.formatDate(sub.dueDate)}`"></span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Right: Amount & Paid Toggle -->
+                <div class="has-text-right" style="flex-shrink: 0; padding-left: 10px;">
+                  <div class="has-text-weight-bold is-size-6" style="color: #f8fafc; font-family: 'JetBrains Mono', monospace;" x-text="SubUtils.formatZAR(sub.amount)"></div>
+                  <div class="mt-1">
+                    <button class="button is-rounded is-small" 
+                            :class="sub.isPaidThisCycle ? 'is-success is-light' : 'is-dark'"
+                            style="font-size: 0.7rem; padding: 2px 8px; height: 24px;"
+                            @click="$store.app.togglePaidStatus(sub)">
+                      <i :class="sub.isPaidThisCycle ? 'fa-solid fa-check mr-1' : 'fa-regular fa-circle mr-1'"></i>
+                      <span x-text="sub.isPaidThisCycle ? 'Paid' : 'Mark Paid'"></span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </template>
+        </div>
+
+      </div>
+
+      <!-- ================================================================= -->
+      <!-- TAB 2: SUBSCRIPTIONS FULL LIST & MANAGEMENT                       -->
+      <!-- ================================================================= -->
+      <div x-show="$store.app.activeTab === 'subscriptions'" x-transition.opacity x-cloak>
+        <div class="is-flex is-justify-content-space-between is-align-items-center mb-3">
+          <h2 class="has-text-weight-bold is-size-5" style="color: white; margin: 0;">All Subscriptions</h2>
+          <button class="button is-primary is-small is-rounded" style="background: var(--accent-primary-gradient);" @click="$store.app.openAddModal()">
+            <i class="fa-solid fa-plus mr-1"></i> Add New
+          </button>
+        </div>
+
+        <!-- Search Bar -->
+        <div class="field mb-3">
+          <div class="control has-icons-left">
+            <input class="input is-rounded" type="text" placeholder="Search subscriptions, category..." x-model="$store.app.searchQuery">
+            <span class="icon is-left" style="color: var(--text-muted);"><i class="fa-solid fa-magnifying-glass"></i></span>
+          </div>
+        </div>
+
+        <!-- Status Filter Tabs -->
+        <div class="filter-scroll-container mb-3">
+          <button class="filter-chip" :class="{ 'is-active': $store.app.activeFilter === 'all' }" @click="$store.app.activeFilter = 'all'">
+            All (<span x-text="$store.app.subscriptions.length"></span>)
+          </button>
+          <button class="filter-chip" :class="{ 'is-active': $store.app.activeFilter === 'due' }" @click="$store.app.activeFilter = 'due'">
+            Unpaid / Due
+          </button>
+          <button class="filter-chip" :class="{ 'is-active': $store.app.activeFilter === 'urgent' }" @click="$store.app.activeFilter = 'urgent'">
+            Urgent (≤3d)
+          </button>
+          <button class="filter-chip" :class="{ 'is-active': $store.app.activeFilter === 'paid' }" @click="$store.app.activeFilter = 'paid'">
+            Paid
+          </button>
+        </div>
+
+        <!-- Subscriptions List -->
+        <template x-if="$store.app.filteredSubscriptions.length === 0">
+          <div class="glass-panel p-5 has-text-centered my-4">
+            <i class="fa-solid fa-filter fa-2x mb-3" style="color: var(--text-dim);"></i>
+            <p class="has-text-weight-medium">No matching subscriptions</p>
+            <p class="is-size-7" style="color: var(--text-muted);">Try clearing your search or filter.</p>
+          </div>
+        </template>
+
+        <template x-for="sub in $store.app.filteredSubscriptions" :key="sub.id">
+          <div class="sub-card" :class="{ 'is-paid-card': sub.isPaidThisCycle }">
+            <div class="is-flex is-justify-content-space-between is-align-items-flex-start">
+              <!-- Left info -->
+              <div class="is-flex is-align-items-center" style="gap: 12px; min-width: 0;">
+                <div class="sub-icon-box" :style="{ backgroundColor: sub.color || '#6366f1' }">
+                  <i :class="`fa-solid ${sub.icon || 'fa-receipt'}`"></i>
+                </div>
+                <div style="min-width: 0;">
+                  <div class="has-text-weight-bold is-size-6" style="color: white;" x-text="sub.name"></div>
+                  <div class="is-size-7" style="color: var(--text-muted);" x-text="sub.category"></div>
+                  <div class="is-flex is-align-items-center mt-1" style="gap: 6px;">
+                    <span class="status-pill" :class="SubUtils.getUrgencyMeta(sub.dueDate, sub.isPaidThisCycle).badgeClass" x-text="SubUtils.getUrgencyMeta(sub.dueDate, sub.isPaidThisCycle).label"></span>
+                    <span class="is-size-7" style="color: var(--text-dim);" x-text="`Due: ${SubUtils.formatDate(sub.dueDate)}`"></span>
+                  </div>
+                  <template x-if="sub.notes">
+                    <p class="is-size-7 mt-1" style="color: #64748b;" x-text="sub.notes"></p>
+                  </template>
+                </div>
+              </div>
+
+              <!-- Right Cost & Quick Mark Paid -->
+              <div class="has-text-right" style="flex-shrink: 0; padding-left: 10px;">
+                <div class="has-text-weight-bold is-size-6" style="color: white; font-family: 'JetBrains Mono', monospace;" x-text="SubUtils.formatZAR(sub.amount)"></div>
+                <div class="is-size-7" style="color: var(--text-muted); text-transform: capitalize;" x-text="sub.billingCycle"></div>
+
+                <button class="button is-rounded is-small mt-2" 
+                        :class="sub.isPaidThisCycle ? 'is-success is-light' : 'is-dark'"
+                        style="font-size: 0.72rem; padding: 2px 8px; height: 26px;"
+                        @click="$store.app.togglePaidStatus(sub)">
+                  <i :class="sub.isPaidThisCycle ? 'fa-solid fa-check mr-1' : 'fa-regular fa-circle mr-1'"></i>
+                  <span x-text="sub.isPaidThisCycle ? 'Paid' : 'Mark Paid'"></span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Card Bottom Bar (Edit, Renew, Delete) -->
+            <div class="is-flex is-justify-content-space-between is-align-items-center mt-3 pt-2" style="border-top: 1px solid rgba(255,255,255,0.06);">
+              <div>
+                <template x-if="sub.isPaidThisCycle">
+                  <button class="button is-ghost is-small p-0 is-size-7" style="color: #38bdf8;" @click="$store.app.renewNextCycle(sub)" title="Advance to next month's due date">
+                    <i class="fa-solid fa-arrow-rotate-right mr-1"></i> Renew Next Cycle
+                  </button>
+                </template>
+              </div>
+              <div class="buttons are-small mb-0">
+                <button class="button is-dark is-small" style="background: rgba(255,255,255,0.06); border: none;" @click="$store.app.openEditModal(sub)" title="Edit">
+                  <i class="fa-solid fa-pen-to-square"></i>
+                </button>
+                <button class="button is-dark is-small" style="background: rgba(239,68,68,0.1); color: #f87171; border: none;" @click="$store.app.confirmDelete(sub)" title="Delete">
+                  <i class="fa-solid fa-trash-can"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        </template>
+      </div>
+
+      <!-- ================================================================= -->
+      <!-- TAB 3: DUE DATE TIMELINE & NOTIFICATIONS                          -->
+      <!-- ================================================================= -->
+      <div x-show="$store.app.activeTab === 'calendar'" x-transition.opacity x-cloak>
+        <div class="mb-4">
+          <h2 class="has-text-weight-bold is-size-5" style="color: white; margin: 0;">Payment Due Timeline</h2>
+          <p class="is-size-7" style="color: var(--text-muted);">Track upcoming dates & manage alerts</p>
+        </div>
+
+        <!-- Push Notification Control Card -->
+        <div class="glass-panel p-4 mb-4">
+          <div class="is-flex is-justify-content-space-between is-align-items-center mb-2">
+            <div class="is-flex is-align-items-center" style="gap: 10px;">
+              <span class="icon is-medium" style="color: #f59e0b;"><i class="fa-solid fa-bell fa-lg"></i></span>
+              <div>
+                <div class="has-text-weight-bold is-size-6">Device Push Notifications</div>
+                <div class="is-size-7" style="color: var(--text-muted);">Get alerts before bills are due</div>
+              </div>
+            </div>
+            <button class="button is-small is-rounded" 
+                    :class="SubNotifier.getPermissionStatus() === 'granted' ? 'is-success is-light' : 'is-primary'"
+                    @click="$store.app.requestNotificationPermission()">
+              <span x-text="SubNotifier.getPermissionStatus() === 'granted' ? 'Enabled' : 'Enable'"></span>
+            </button>
+          </div>
+          <div class="is-flex is-justify-content-space-between is-align-items-center mt-3 pt-2" style="border-top: 1px solid rgba(255,255,255,0.06);">
+            <span class="is-size-7" style="color: var(--text-dim);">Test system alert sound & popup</span>
+            <button class="button is-dark is-small is-rounded" style="background: rgba(255,255,255,0.06); font-size: 0.72rem;" @click="$store.app.testNotification()">
+              <i class="fa-solid fa-paper-plane mr-1"></i> Send Test Alert
+            </button>
+          </div>
+        </div>
+
+        <!-- Timeline Section -->
+        <div class="mb-5">
+          <h3 class="has-text-weight-semibold is-size-6 mb-3" style="color: #cbd5e1;">All Bills Chronological</h3>
+
+          <template x-for="sub in $store.app.subscriptions.slice().sort((a,b) => SubUtils.getDaysUntil(a.dueDate) - SubUtils.getDaysUntil(b.dueDate))" :key="sub.id">
+            <div class="alert-item is-flex is-justify-content-space-between is-align-items-center mb-2">
+              <div class="is-flex is-align-items-center" style="gap: 10px;">
+                <div class="sub-icon-box" :style="{ backgroundColor: sub.color || '#6366f1', width: '36px', height: '36px', fontSize: '0.9rem' }">
+                  <i :class="`fa-solid ${sub.icon || 'fa-receipt'}`"></i>
+                </div>
+                <div>
+                  <div class="has-text-weight-bold is-size-6" style="color: white;" x-text="sub.name"></div>
+                  <div class="is-size-7" style="color: var(--text-muted);" x-text="`${SubUtils.formatDate(sub.dueDate)} (${sub.billingCycle})`"></div>
+                </div>
+              </div>
+
+              <div class="has-text-right">
+                <div class="has-text-weight-bold is-size-6" style="color: white; font-family: 'JetBrains Mono', monospace;" x-text="SubUtils.formatZAR(sub.amount)"></div>
+                <span class="status-pill mt-1" :class="SubUtils.getUrgencyMeta(sub.dueDate, sub.isPaidThisCycle).badgeClass" x-text="SubUtils.getUrgencyMeta(sub.dueDate, sub.isPaidThisCycle).label"></span>
+              </div>
+            </div>
+          </template>
+        </div>
+      </div>
+
+      <!-- ================================================================= -->
+      <!-- TAB 4: BUDGET & SETTINGS VIEW                                     -->
+      <!-- ================================================================= -->
+      <div x-show="$store.app.activeTab === 'settings'" x-transition.opacity x-cloak>
+        <div class="mb-4">
+          <h2 class="has-text-weight-bold is-size-5" style="color: white; margin: 0;">Budget & Settings</h2>
+          <p class="is-size-7" style="color: var(--text-muted);">Configure income, mock database & backup</p>
+        </div>
+
+        <!-- Income Profile Card -->
+        <div class="glass-panel p-4 mb-4">
+          <h3 class="has-text-weight-semibold is-size-6 mb-3" style="color: #a5b4fc;">
+            <i class="fa-solid fa-coins mr-1"></i> Salary & Currency
+          </h3>
+          <div class="field">
+            <label class="label">Monthly Take-Home Salary (ZAR)</label>
+            <div class="field has-addons">
+              <p class="control">
+                <a class="button is-static" style="background: #1e293b; color: white; border-color: var(--border-glass);">R</a>
+              </p>
+              <p class="control is-expanded">
+                <input class="input" type="number" step="100" x-model="$store.app.salaryInput">
+              </p>
+              <p class="control">
+                <button class="button is-primary" style="background: var(--accent-primary-gradient);" @click="$store.app.saveSalary()">Save</button>
+              </p>
+            </div>
+            <p class="help" style="color: var(--text-dim);">Balance calculates automatically as: Salary minus active subscriptions.</p>
+          </div>
+
+          <div class="field mt-3">
+            <label class="label">Currency Format</label>
+            <input class="input" type="text" value="South African Rand (ZAR - R)" disabled style="opacity: 0.7;">
+          </div>
+        </div>
+
+        <!-- Month Management Card -->
+        <div class="glass-panel p-4 mb-4">
+          <h3 class="has-text-weight-semibold is-size-6 mb-3" style="color: #38bdf8;">
+            <i class="fa-solid fa-calendar-check mr-1"></i> New Month Reset
+          </h3>
+          <p class="is-size-7 mb-3" style="color: var(--text-muted);">
+            When payday arrives or a new calendar month begins, click below to mark all subscriptions as pending so you can track them again.
+          </p>
+          <button class="button is-dark is-fullwidth" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3);" @click="$store.app.resetAllPaidStatus()">
+            <i class="fa-solid fa-rotate-left mr-2"></i> Reset Subscriptions to Pending
+          </button>
+        </div>
+
+        <!-- LocalStorage Mock Database Management -->
+        <div class="glass-panel p-4 mb-4">
+          <h3 class="has-text-weight-semibold is-size-6 mb-3" style="color: #34d399;">
+            <i class="fa-solid fa-database mr-1"></i> LocalStorage Mock Database
+          </h3>
+          <p class="is-size-7 mb-3" style="color: var(--text-muted);">
+            Your data is stored in the browser's persistent mock database. You can export it to JSON as a backup or to seed your future MySQL database.
+          </p>
+          <div class="buttons">
+            <button class="button is-dark is-small" style="background: rgba(255,255,255,0.06); border-color: var(--border-glass);" @click="$store.app.exportData()">
+              <i class="fa-solid fa-download mr-1"></i> Export Backup (JSON)
+            </button>
+            <label class="button is-dark is-small" style="background: rgba(255,255,255,0.06); border-color: var(--border-glass); cursor: pointer;">
+              <i class="fa-solid fa-upload mr-1"></i> Restore Backup
+              <input type="file" accept=".json" style="display: none;" @change="$store.app.handleImportFile($event)">
+            </label>
+            <button class="button is-dark is-small" style="background: rgba(245, 158, 11, 0.1); color: #fbbf24; border-color: rgba(245, 158, 11, 0.3);" @click="$store.app.resetToDefaults()">
+              <i class="fa-solid fa-arrow-rotate-right mr-1"></i> Reset to Demo Data
+            </button>
+          </div>
+        </div>
+
+        <!-- Future PHP / MySQL Architecture Note -->
+        <div class="glass-panel p-4 mb-4" style="background: rgba(99, 102, 241, 0.08); border-color: rgba(99, 102, 241, 0.25);">
+          <div class="is-flex is-align-items-center mb-2" style="gap: 8px;">
+            <i class="fa-brands fa-php fa-xl" style="color: #818cf8;"></i>
+            <span class="has-text-weight-bold is-size-6" style="color: #a5b4fc;">PHP & MySQL Migration Ready</span>
+          </div>
+          <p class="is-size-7" style="color: var(--text-muted); line-height: 1.5;">
+            The data store is decoupled in <code>js/store.js</code> under <code>StorageRepository</code>. When you are ready to introduce your PHP backend and MySQL database, simply swap the localStorage methods with standard <code>fetch('api/subscriptions.php')</code> requests.
+          </p>
+        </div>
+      </div>
+
+    </main>
+
+    <!-- Floating Action Button (FAB) -->
+    <button class="fab-btn" @click="$store.app.openAddModal()" title="Add Subscription">
+      <i class="fa-solid fa-plus"></i>
+    </button>
+
+    <!-- Fixed Bottom Navigation Bar -->
+    <nav class="bottom-nav-bar">
+      <button class="nav-tab-item" :class="{ 'is-active': $store.app.activeTab === 'dashboard' }" @click="$store.app.activeTab = 'dashboard'">
+        <i class="fa-solid fa-chart-pie"></i>
+        <span>Dashboard</span>
+      </button>
+      <button class="nav-tab-item" :class="{ 'is-active': $store.app.activeTab === 'subscriptions' }" @click="$store.app.activeTab = 'subscriptions'">
+        <i class="fa-solid fa-list-check"></i>
+        <span>Subs</span>
+      </button>
+      <button class="nav-tab-item" :class="{ 'is-active': $store.app.activeTab === 'calendar' }" @click="$store.app.activeTab = 'calendar'">
+        <i class="fa-solid fa-calendar-days"></i>
+        <span>Due Soon</span>
+      </button>
+      <button class="nav-tab-item" :class="{ 'is-active': $store.app.activeTab === 'settings' }" @click="$store.app.activeTab = 'settings'">
+        <i class="fa-solid fa-sliders"></i>
+        <span>Settings</span>
+      </button>
+    </nav>
+
+    <!-- ================================================================= -->
+    <!-- BOTTOM SHEET: ADD / EDIT SUBSCRIPTION MODAL                       -->
+    <!-- ================================================================= -->
+    <div class="bottom-sheet-backdrop" x-show="$store.app.isAddModalOpen" x-transition.opacity.duration.250ms x-cloak @click.self="$store.app.closeAddModal()">
+      <div class="bottom-sheet-container" x-show="$store.app.isAddModalOpen" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="transform translate-y-full" x-transition:enter-end="transform translate-y-0" x-transition:leave="transition ease-in duration-200" x-transition:leave-start="transform translate-y-0" x-transition:leave-end="transform translate-y-full">
+        <div class="bottom-sheet-handle"></div>
+
+        <div class="is-flex is-justify-content-space-between is-align-items-center mb-3">
+          <h3 class="has-text-weight-bold is-size-5" style="color: white;" x-text="$store.app.formSub.id ? 'Edit Subscription' : 'Add Subscription'"></h3>
+          <button class="delete is-medium" @click="$store.app.closeAddModal()"></button>
+        </div>
+
+        <!-- Quick Pick Preset button (when adding) -->
+        <template x-if="!$store.app.formSub.id">
+          <div class="mb-3">
+            <button class="button is-dark is-small is-rounded is-fullwidth" style="background: rgba(99,102,241,0.15); color: #a5b4fc; border: 1px solid rgba(99,102,241,0.3);" @click="$store.app.isPresetPickerOpen = !$store.app.isPresetPickerOpen">
+              <i class="fa-solid fa-wand-magic-sparkles mr-2"></i>
+              <span x-text="$store.app.isPresetPickerOpen ? 'Hide SA Presets' : 'Choose from Popular SA Presets'"></span>
+            </button>
+
+            <!-- Preset Selection Grid -->
+            <div class="preset-grid" x-show="$store.app.isPresetPickerOpen" x-transition>
+              <template x-for="p in SA_PRESETS" :key="p.name">
+                <div class="preset-card-item" @click="$store.app.openAddModal(p)">
+                  <div class="sub-icon-box" :style="{ backgroundColor: p.color, width: '30px', height: '30px', fontSize: '0.8rem' }">
+                    <i :class="`fa-solid ${p.icon}`"></i>
+                  </div>
+                  <div>
+                    <div class="is-size-7 has-text-weight-bold" style="color: white;" x-text="p.name"></div>
+                    <div class="is-size-7" style="color: #94a3b8;" x-text="SubUtils.formatZAR(p.amount)"></div>
+                  </div>
+                </div>
+              </template>
+            </div>
+          </div>
+        </template>
+
+        <!-- Subscription Form -->
+        <form @submit.prevent="$store.app.saveSubscriptionForm()">
+          <div class="field">
+            <label class="label">Subscription Name *</label>
+            <div class="control has-icons-left">
+              <input class="input" type="text" placeholder="e.g. Showmax, Netflix, Spotify" x-model="$store.app.formSub.name" required>
+              <span class="icon is-left" style="color: var(--text-muted);"><i class="fa-solid fa-tag"></i></span>
+            </div>
+          </div>
+
+          <div class="columns is-mobile">
+            <div class="column is-6">
+              <div class="field">
+                <label class="label">Amount (ZAR) *</label>
+                <div class="control has-icons-left">
+                  <input class="input" type="number" step="0.01" placeholder="99.00" x-model="$store.app.formSub.amount" required>
+                  <span class="icon is-left" style="color: var(--text-muted); font-weight: bold;">R</span>
+                </div>
+              </div>
+            </div>
+            <div class="column is-6">
+              <div class="field">
+                <label class="label">Billing Cycle</label>
+                <div class="control">
+                  <div class="select is-fullwidth">
+                    <select x-model="$store.app.formSub.billingCycle">
+                      <option value="monthly">Monthly</option>
+                      <option value="yearly">Yearly</option>
+                      <option value="weekly">Weekly</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="columns is-mobile">
+            <div class="column is-6">
+              <div class="field">
+                <label class="label">Next Due Date *</label>
+                <div class="control">
+                  <input class="input" type="date" x-model="$store.app.formSub.dueDate" required>
+                </div>
+              </div>
+            </div>
+            <div class="column is-6">
+              <div class="field">
+                <label class="label">Category</label>
+                <div class="control">
+                  <div class="select is-fullwidth">
+                    <select x-model="$store.app.formSub.category">
+                      <option value="Entertainment">Entertainment</option>
+                      <option value="Music">Music</option>
+                      <option value="Internet">Internet / Telco</option>
+                      <option value="Fitness">Fitness / Gym</option>
+                      <option value="Health">Health / Medical</option>
+                      <option value="Cloud">Cloud / Storage</option>
+                      <option value="Software">Software</option>
+                      <option value="Insurance">Insurance</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="field">
+            <label class="label">Accent Color & Icon</label>
+            <div class="is-flex is-align-items-center" style="gap: 10px;">
+              <input type="color" class="input p-1" style="width: 50px; height: 38px; cursor: pointer;" x-model="$store.app.formSub.color">
+              <div class="select is-fullwidth">
+                <select x-model="$store.app.formSub.icon">
+                  <option value="fa-tv">📺 TV / Video</option>
+                  <option value="fa-film">🎬 Cinema / Movies</option>
+                  <option value="fa-music">🎵 Music</option>
+                  <option value="fa-wifi">📡 Wi-Fi / Fibre</option>
+                  <option value="fa-dumbbell">🏋️ Gym / Fitness</option>
+                  <option value="fa-cloud">☁️ Cloud Storage</option>
+                  <option value="fa-heart-pulse">❤️ Vitality / Health</option>
+                  <option value="fa-satellite-dish">🛰️ Satellite / DSTV</option>
+                  <option value="fa-receipt">🧾 Standard Bill</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="field">
+            <label class="label">Notes / Package details</label>
+            <div class="control">
+              <input class="input" type="text" placeholder="e.g. Standard 4K plan, paid via Capitec" x-model="$store.app.formSub.notes">
+            </div>
+          </div>
+
+          <div class="field mt-4">
+            <button type="submit" class="button is-primary is-fullwidth is-medium" style="background: var(--accent-primary-gradient); border-radius: var(--radius-md);">
+              <i class="fa-solid fa-check mr-2"></i>
+              <span x-text="$store.app.formSub.id ? 'Save Changes' : 'Add Subscription'"></span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- ================================================================= -->
+    <!-- BOTTOM SHEET: SALARY EDIT MODAL                                   -->
+    <!-- ================================================================= -->
+    <div class="bottom-sheet-backdrop" x-show="$store.app.isSalaryModalOpen" x-transition.opacity.duration.250ms x-cloak @click.self="$store.app.isSalaryModalOpen = false">
+      <div class="bottom-sheet-container" x-show="$store.app.isSalaryModalOpen" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="transform translate-y-full" x-transition:enter-end="transform translate-y-0" x-transition:leave="transition ease-in duration-200" x-transition:leave-start="transform translate-y-0" x-transition:leave-end="transform translate-y-full">
+        <div class="bottom-sheet-handle"></div>
+        <div class="is-flex is-justify-content-space-between is-align-items-center mb-3">
+          <h3 class="has-text-weight-bold is-size-5" style="color: white;">Monthly Salary / Earnings</h3>
+          <button class="delete is-medium" @click="$store.app.isSalaryModalOpen = false"></button>
+        </div>
+
+        <p class="is-size-7 mb-4" style="color: var(--text-muted);">
+          SubTracker uses your monthly salary in South African Rands (ZAR) to compute your disposable remaining balance.
+        </p>
+
+        <div class="field">
+          <label class="label">Monthly Take-Home Amount (ZAR)</label>
+          <div class="control has-icons-left">
+            <input class="input is-medium" type="number" step="100" placeholder="e.g. 28000" x-model="$store.app.salaryInput">
+            <span class="icon is-left" style="color: var(--text-muted); font-weight: bold;">R</span>
+          </div>
+        </div>
+
+        <div class="field mt-4">
+          <button class="button is-primary is-fullwidth is-medium" style="background: var(--accent-primary-gradient); border-radius: var(--radius-md);" @click="$store.app.saveSalary()">
+            Save Income
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================================================================= -->
+    <!-- DRAWER: IN-APP ALERTS & NOTIFICATIONS                             -->
+    <!-- ================================================================= -->
+    <div class="bottom-sheet-backdrop" x-show="$store.app.isAlertsDrawerOpen" x-transition.opacity.duration.250ms x-cloak @click.self="$store.app.isAlertsDrawerOpen = false">
+      <div class="bottom-sheet-container" x-show="$store.app.isAlertsDrawerOpen" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="transform translate-y-full" x-transition:enter-end="transform translate-y-0" x-transition:leave="transition ease-in duration-200" x-transition:leave-start="transform translate-y-0" x-transition:leave-end="transform translate-y-full">
+        <div class="bottom-sheet-handle"></div>
+
+        <div class="is-flex is-justify-content-space-between is-align-items-center mb-3">
+          <div class="is-flex is-align-items-center" style="gap: 8px;">
+            <i class="fa-solid fa-bell" style="color: #f59e0b;"></i>
+            <h3 class="has-text-weight-bold is-size-5" style="color: white; margin: 0;">Payment Alerts</h3>
+          </div>
+          <button class="delete is-medium" @click="$store.app.isAlertsDrawerOpen = false"></button>
+        </div>
+
+        <template x-if="$store.app.upcomingAlerts.length === 0">
+          <div class="glass-panel p-5 has-text-centered my-3">
+            <i class="fa-solid fa-circle-check fa-2x mb-2" style="color: #10b981;"></i>
+            <p class="has-text-weight-medium">All caught up!</p>
+            <p class="is-size-7" style="color: var(--text-muted);">No urgent or overdue bills at this time.</p>
+          </div>
+        </template>
+
+        <template x-for="alert in $store.app.upcomingAlerts" :key="alert.id">
+          <div class="alert-item mb-2" :style="{ borderColor: alert.color }">
+            <div class="is-flex is-justify-content-space-between is-align-items-flex-start">
+              <div class="is-flex" style="gap: 10px;">
+                <span class="icon mt-1" :style="{ color: alert.color }">
+                  <i :class="`fa-solid ${alert.icon}`"></i>
+                </span>
+                <div>
+                  <div class="has-text-weight-bold is-size-6" style="color: white;" x-text="alert.title"></div>
+                  <div class="is-size-7" style="color: var(--text-muted);" x-text="alert.message"></div>
+                </div>
+              </div>
+              <div class="has-text-right">
+                <span class="has-text-weight-bold is-size-6" style="color: white;" x-text="alert.amount"></span>
+              </div>
+            </div>
+          </div>
+        </template>
+
+        <div class="mt-4">
+          <button class="button is-dark is-fullwidth is-small" style="background: rgba(255,255,255,0.06);" @click="$store.app.isAlertsDrawerOpen = false">
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================================================================= -->
+    <!-- MODAL: DELETE CONFIRMATION                                        -->
+    <!-- ================================================================= -->
+    <div class="bottom-sheet-backdrop" x-show="$store.app.isDeleteConfirmOpen" x-transition.opacity.duration.200ms x-cloak @click.self="$store.app.isDeleteConfirmOpen = false">
+      <div class="bottom-sheet-container" style="max-height: 40vh;">
+        <div class="bottom-sheet-handle"></div>
+        <div class="has-text-centered p-3">
+          <i class="fa-solid fa-triangle-exclamation fa-2x mb-3" style="color: #ef4444;"></i>
+          <h4 class="has-text-weight-bold is-size-5" style="color: white;">Delete Subscription?</h4>
+          <p class="is-size-7 my-2" style="color: var(--text-muted);" x-text="`Are you sure you want to remove '${$store.app.subToDelete?.name}' from your tracker?`"></p>
+          <div class="buttons is-centered mt-4">
+            <button class="button is-danger" @click="$store.app.executeDelete()">Yes, Delete</button>
+            <button class="button is-dark" @click="$store.app.isDeleteConfirmOpen = false">Cancel</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Service Worker Registration -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').then((reg) => {
+          console.log('SubTracker Service Worker registered successfully:', reg.scope);
+        }).catch((err) => {
+          console.warn('Service Worker registration skipped or failed:', err);
+        });
+      });
+    }
+  </script>
+
+</body>
+</html>
