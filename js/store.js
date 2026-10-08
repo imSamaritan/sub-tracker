@@ -32,7 +32,8 @@ const SA_PRESETS = [
   { name: 'X', category: 'Software', amount: 110, cycle: 'monthly', icon: 'fa-x', color: '#1d9bf0', notes: 'X Premium (Twitter)' },
   { name: 'Build A Home', category: 'Housing', amount: 500, cycle: 'monthly', icon: 'fa-hammer', color: '#d97706', notes: 'Build A Home monthly contribution' },
   { name: 'Savings', category: 'Savings', amount: 500, cycle: 'monthly', icon: 'fa-piggy-bank', color: '#10b981', notes: 'Monthly savings & investment' },
-  { name: 'Saving Load Shark', category: 'Savings', amount: 500, cycle: 'monthly', icon: 'fa-sack-dollar', color: '#8b5cf6', notes: 'Saving Load Shark contribution' }
+  { name: 'Saving Load Shark', category: 'Savings', amount: 500, cycle: 'monthly', icon: 'fa-sack-dollar', color: '#8b5cf6', notes: 'Saving Load Shark contribution' },
+  { name: 'Sanlam insurance', category: 'Insurance', amount: 330, cycle: 'monthly', icon: 'fa-shield-halved', color: '#0075c9', notes: 'Sanlam insurance cover' }
 ];
 
 const DEFAULT_SAMPLE_DATA = {

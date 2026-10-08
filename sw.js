@@ -3,7 +3,7 @@
  * Caches core app shell, local CSS/JS, and CDN assets for offline use
  */
 
-const CACHE_NAME = 'subtracker-cache-v5';
+const CACHE_NAME = 'subtracker-cache-v6';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
