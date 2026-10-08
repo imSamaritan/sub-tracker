@@ -28,7 +28,11 @@ const SA_PRESETS = [
   { name: 'Discovery Vitality', category: 'Health', amount: 350, cycle: 'monthly', icon: 'fa-heart-pulse', color: '#f59e0b', notes: 'Discovery Vitality wellness' },
   { name: 'iCloud 200GB', category: 'Cloud', amount: 44.99, cycle: 'monthly', icon: 'fa-cloud', color: '#3b82f6', notes: 'Apple iCloud 200GB storage' },
   { name: 'Google One 100GB', category: 'Cloud', amount: 29.99, cycle: 'monthly', icon: 'fa-database', color: '#10b981', notes: 'Google One 100GB storage' },
-  { name: 'Apple Music', category: 'Music', amount: 69.99, cycle: 'monthly', icon: 'fa-headphones', color: '#fa2d48', notes: 'Apple Music subscription' }
+  { name: 'Apple Music', category: 'Music', amount: 69.99, cycle: 'monthly', icon: 'fa-headphones', color: '#fa2d48', notes: 'Apple Music subscription' },
+  { name: 'X', category: 'Software', amount: 110, cycle: 'monthly', icon: 'fa-x', color: '#1d9bf0', notes: 'X Premium (Twitter)' },
+  { name: 'Build A Home', category: 'Housing', amount: 500, cycle: 'monthly', icon: 'fa-hammer', color: '#d97706', notes: 'Build A Home monthly contribution' },
+  { name: 'Savings', category: 'Savings', amount: 500, cycle: 'monthly', icon: 'fa-piggy-bank', color: '#10b981', notes: 'Monthly savings & investment' },
+  { name: 'Saving Load Shark', category: 'Savings', amount: 500, cycle: 'monthly', icon: 'fa-sack-dollar', color: '#8b5cf6', notes: 'Saving Load Shark contribution' }
 ];
 
 const DEFAULT_SAMPLE_DATA = {
