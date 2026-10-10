@@ -17,12 +17,12 @@
   <!-- Font Awesome CDN -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <!-- Custom App CSS -->
-  <link rel="stylesheet" href="css/app.css">
+  <link rel="stylesheet" href="css/app.css?v=8">
 
   <!-- App Core Logic -->
-  <script src="js/utils.js"></script>
-  <script src="js/notifications.js"></script>
-  <script src="js/store.js"></script>
+  <script src="js/utils.js?v=8"></script>
+  <script src="js/notifications.js?v=8"></script>
+  <script src="js/store.js?v=8"></script>
 
   <!-- Alpine.js CDN (defer) -->
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
@@ -82,7 +82,18 @@
       <!-- ================================================================= -->
       <!-- TAB 1: DASHBOARD VIEW                                             -->
       <!-- ================================================================= -->
-      <div x-show="$store.app.activeTab === 'dashboard'" x-transition.opacity>
+      <div x-show="$store.app.activeTab === 'dashboard'" 
+           x-data="{
+             get dashboardSubs() {
+               const subs = $store.app.subscriptions || [];
+               return subs.slice().sort((a, b) => {
+                 if (a.isPaidThisCycle && !b.isPaidThisCycle) return 1;
+                 if (!a.isPaidThisCycle && b.isPaidThisCycle) return -1;
+                 return SubUtils.getDaysUntil(a.dueDate) - SubUtils.getDaysUntil(b.dueDate);
+               }).slice(0, 5);
+             }
+           }" 
+           x-transition.opacity>
 
         <!-- Master Balance Hero Card -->
         <div class="hero-balance-card mb-4">
@@ -175,7 +186,7 @@
         <div class="mb-5">
           <div class="is-flex is-justify-content-space-between is-align-items-center mb-3">
             <h2 class="has-text-weight-bold is-size-6" style="color: white; margin: 0;">Upcoming Due Dates</h2>
-            <button class="button is-ghost is-small p-0" style="color: #818cf8;" @click="$store.app.activeTab = 'subscriptions'">
+            <button class="button is-ghost is-small p-0" style="color: #818cf8;" @click="$store.app.activeTab = 'subscriptions'; $store.app.activeFilter = 'all'; $store.app.searchQuery = ''">
               <span>View All (<span x-text="$store.app.subscriptions.length"></span>)</span>
             </button>
           </div>
@@ -191,7 +202,7 @@
             </div>
           </template>
 
-          <template x-for="sub in $store.app.filteredSubscriptions.slice(0, 5)" :key="sub.id">
+          <template x-for="sub in dashboardSubs" :key="sub.id">
             <div class="sub-card" :class="{ 'is-paid-card': sub.isPaidThisCycle }">
               <div class="is-flex is-justify-content-space-between is-align-items-center">
                 <!-- Left: Icon & Details -->
@@ -801,11 +812,21 @@
 
   </div>
 
-  <!-- Service Worker Registration -->
+  <!-- Service Worker Registration & Cache Purge -->
   <script>
+    if ('caches' in window) {
+      caches.keys().then((keys) => {
+        keys.forEach((key) => {
+          if (key !== 'subtracker-cache-v8') {
+            caches.delete(key);
+          }
+        });
+      });
+    }
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('./sw.js').then((reg) => {
+          reg.update();
           console.log('SubTracker Service Worker registered successfully:', reg.scope);
         }).catch((err) => {
           console.warn('Service Worker registration skipped or failed:', err);
