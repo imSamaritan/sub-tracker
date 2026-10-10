@@ -3,7 +3,7 @@
  * Caches core app shell, local CSS/JS, and CDN assets for offline use
  */
 
-const CACHE_NAME = 'subtracker-cache-v6';
+const CACHE_NAME = 'subtracker-cache-v8';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -44,17 +44,41 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Cache First with Network Fallback
+// Network First with Cache Fallback for local assets; Cache First for CDN
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
+  const url = new URL(event.request.url);
+
+  // If local origin (HTML, JS, CSS), use Network-First so updates take effect immediately
+  if (url.origin === location.origin) {
+    event.respondWith(
+      fetch(event.request).then((networkResponse) => {
+        if (networkResponse && networkResponse.status === 200) {
+          const responseToCache = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseToCache);
+          });
+        }
+        return networkResponse;
+      }).catch(() => {
+        return caches.match(event.request).then((cachedResponse) => {
+          if (cachedResponse) return cachedResponse;
+          return caches.match('./index.html');
+        });
+      })
+    );
+    return;
+  }
+
+  // Cache First for external CDN resources
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       if (cachedResponse) {
         return cachedResponse;
       }
       return fetch(event.request).then((networkResponse) => {
-        if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
+        if (!networkResponse || networkResponse.status !== 200) {
           return networkResponse;
         }
         const responseToCache = networkResponse.clone();
@@ -62,9 +86,6 @@ self.addEventListener('fetch', (event) => {
           cache.put(event.request, responseToCache);
         });
         return networkResponse;
-      }).catch(() => {
-        // Offline fallback
-        return caches.match('./index.html');
       });
     })
   );

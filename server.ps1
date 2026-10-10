@@ -38,7 +38,9 @@ try {
             $response.Headers.Add("Access-Control-Allow-Origin", "*")
             $response.Headers.Add("Access-Control-Allow-Methods", "GET, POST, OPTIONS, HEAD")
             $response.Headers.Add("Access-Control-Allow-Headers", "*")
-            $response.Headers.Add("Cache-Control", "no-cache")
+            $response.Headers.Add("Cache-Control", "no-cache, no-store, must-revalidate")
+            $response.Headers.Add("Pragma", "no-cache")
+            $response.Headers.Add("Expires", "0")
 
             if ($request.HttpMethod -eq "OPTIONS") {
                 $response.StatusCode = 204
