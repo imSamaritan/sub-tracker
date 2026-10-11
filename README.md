@@ -25,7 +25,9 @@ SubTracker is a sleek, Progressive Web App (PWA) designed to track recurring sub
   - JSON Backup Export and Import/Restore.
   - Structured for a 1-to-1 drop-in replacement with a future **PHP & MySQL REST API**.
 - **Mobile-First App Experience (PWA)**:
-  - Ergonomic bottom navigation bar and floating action button (FAB).
+  - Ergonomic bottom navigation tray with 5 tabs (**Dashboard**, **Subs**, **Due Soon**, **Info**, and **Settings**).
+  - Floating action button (FAB) for rapid subscription capture.
+  - Interactive **Info & Guide Tab**: In-depth app overview, step-by-step user guide, and developer spotlight for **imsamaritan**.
   - Touch-friendly slide-up bottom sheets with smooth transitions.
   - Installable to mobile and desktop home screens via `manifest.webmanifest` and Service Worker (`sw.js`).
 
@@ -69,3 +71,11 @@ SubTracker is a sleek, Progressive Web App (PWA) designed to track recurring sub
 ## 🔮 Roadmap
 - [ ] Connect `StorageRepository` to a PHP REST API.
 - [ ] Implement MySQL database backend with user authentication.
+
+---
+
+## 👨‍💻 Developer
+Developed with ❤️ by **imsamaritan** (Software Developer).
+- Portfolio: [imsamaritan.co.za](https://imsamaritan.co.za)
+- GitHub: [@imSamaritan](https://github.com/imSamaritan)
+- Repository: [sub-tracker](https://github.com/imSamaritan/sub-tracker)

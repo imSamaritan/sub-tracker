@@ -75,12 +75,12 @@
   <!-- Font Awesome CDN -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <!-- Custom App CSS -->
-  <link rel="stylesheet" href="css/app.css?v=11">
+  <link rel="stylesheet" href="css/app.css?v=12">
 
   <!-- App Core Logic -->
-  <script src="js/utils.js?v=11"></script>
-  <script src="js/notifications.js?v=11"></script>
-  <script src="js/store.js?v=11"></script>
+  <script src="js/utils.js?v=12"></script>
+  <script src="js/notifications.js?v=12"></script>
+  <script src="js/store.js?v=12"></script>
 
   <!-- Alpine.js CDN (defer) -->
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
@@ -578,10 +578,235 @@
         </div>
       </div>
 
+      <!-- ================================================================= -->
+      <!-- TAB 5: ABOUT & INFO VIEW                                          -->
+      <!-- ================================================================= -->
+      <div x-show="$store.app.activeTab === 'info'" x-transition.opacity x-cloak>
+
+        <!-- Header / Title Section -->
+        <div class="mb-4">
+          <div class="is-flex is-align-items-center mb-1" style="gap: 8px;">
+            <h2 class="has-text-weight-bold is-size-5" style="color: white; margin: 0;">About & Guide</h2>
+            <span class="brand-badge"><i class="fa-solid fa-circle-info"></i> Info</span>
+          </div>
+          <p class="is-size-7" style="color: var(--text-muted);">Discover how SubTracker works and how to master your budget</p>
+        </div>
+
+        <!-- Hero Card: What SubTracker Is -->
+        <div class="hero-balance-card mb-4" style="background: linear-gradient(135deg, rgba(30, 41, 69, 0.85) 0%, rgba(15, 23, 42, 0.95) 100%);">
+          <div class="is-flex is-align-items-center mb-3" style="gap: 12px;">
+            <div class="icon-btn-round" style="background: var(--accent-primary-gradient); color: white; width: 44px; height: 44px; font-size: 1.2rem; border: none; flex-shrink: 0;">
+              <i class="fa-solid fa-wallet"></i>
+            </div>
+            <div>
+              <div class="is-flex is-align-items-center" style="gap: 6px;">
+                <h3 class="has-text-weight-bold is-size-5" style="color: white; margin: 0; line-height: 1.2;">SubTracker</h3>
+                <span class="brand-badge">🇿🇦 ZAR</span>
+              </div>
+              <p class="is-size-7" style="color: #94a3b8; margin: 0;">Rand Subscription & Salary Budget Manager</p>
+            </div>
+          </div>
+
+          <p class="is-size-7" style="color: #cbd5e1; line-height: 1.6; margin-bottom: 0.85rem;">
+            <strong>What is SubTracker?</strong> SubTracker is a mobile-first personal finance Progressive Web App crafted specifically for South Africans earning in Rands (ZAR). It bridges the gap between your monthly net take-home salary and recurring expenses — giving you immediate visibility into your true remaining disposable income after all subscriptions, debit orders, and monthly commitments are accounted for.
+          </p>
+
+          <div class="is-flex is-flex-wrap-wrap" style="gap: 6px;">
+            <span class="info-feature-pill"><i class="fa-solid fa-coins" style="color: #10b981;"></i> ZAR Net Salary Tracking</span>
+            <span class="info-feature-pill"><i class="fa-solid fa-bell" style="color: #f59e0b;"></i> Debit Due Alerts</span>
+            <span class="info-feature-pill"><i class="fa-solid fa-shield-halved" style="color: #38bdf8;"></i> 100% Private & Offline</span>
+            <span class="info-feature-pill"><i class="fa-solid fa-mobile-screen" style="color: #a5b4fc;"></i> Standalone PWA</span>
+          </div>
+        </div>
+
+        <!-- Key Pillars Grid -->
+        <div class="columns is-mobile is-multiline is-variable is-2 mb-4">
+          <div class="column is-6">
+            <div class="glass-panel p-3 h-100" style="height: 100%;">
+              <div class="is-flex is-align-items-center mb-2" style="gap: 8px;">
+                <div class="sub-icon-box" style="background: rgba(16, 185, 129, 0.2); color: #10b981; width: 30px; height: 30px; font-size: 0.85rem;">
+                  <i class="fa-solid fa-calculator"></i>
+                </div>
+                <span class="has-text-weight-bold is-size-7" style="color: white;">Real-Time Balance</span>
+              </div>
+              <p class="is-size-7" style="color: var(--text-muted); line-height: 1.4;">
+                Calculates: <code>Balance = Salary - Subscriptions</code> so you never overcommit your paycheck.
+              </p>
+            </div>
+          </div>
+          <div class="column is-6">
+            <div class="glass-panel p-3 h-100" style="height: 100%;">
+              <div class="is-flex is-align-items-center mb-2" style="gap: 8px;">
+                <div class="sub-icon-box" style="background: rgba(56, 189, 248, 0.2); color: #38bdf8; width: 30px; height: 30px; font-size: 0.85rem;">
+                  <i class="fa-solid fa-list-check"></i>
+                </div>
+                <span class="has-text-weight-bold is-size-7" style="color: white;">SA Favorites</span>
+              </div>
+              <p class="is-size-7" style="color: var(--text-muted); line-height: 1.4;">
+                Pre-loaded with Showmax, DSTV, Spotify, Vodacom, Rent, Insurance, and Gym presets.
+              </p>
+            </div>
+          </div>
+          <div class="column is-6">
+            <div class="glass-panel p-3 h-100" style="height: 100%;">
+              <div class="is-flex is-align-items-center mb-2" style="gap: 8px;">
+                <div class="sub-icon-box" style="background: rgba(245, 158, 11, 0.2); color: #f59e0b; width: 30px; height: 30px; font-size: 0.85rem;">
+                  <i class="fa-solid fa-clock"></i>
+                </div>
+                <span class="has-text-weight-bold is-size-7" style="color: white;">Due Date Alerts</span>
+              </div>
+              <p class="is-size-7" style="color: var(--text-muted); line-height: 1.4;">
+                Chronological timeline & push notifications warn you 1–2 days before debit orders hit.
+              </p>
+            </div>
+          </div>
+          <div class="column is-6">
+            <div class="glass-panel p-3 h-100" style="height: 100%;">
+              <div class="is-flex is-align-items-center mb-2" style="gap: 8px;">
+                <div class="sub-icon-box" style="background: rgba(139, 92, 246, 0.2); color: #a5b4fc; width: 30px; height: 30px; font-size: 0.85rem;">
+                  <i class="fa-solid fa-database"></i>
+                </div>
+                <span class="has-text-weight-bold is-size-7" style="color: white;">Privacy First</span>
+              </div>
+              <p class="is-size-7" style="color: var(--text-muted); line-height: 1.4;">
+                All data is stored directly in your browser's local mock database with JSON export & restore.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section: How to Use SubTracker -->
+        <div class="glass-panel p-4 mb-4">
+          <div class="is-flex is-align-items-center mb-3" style="gap: 8px;">
+            <span class="icon" style="color: #6366f1;"><i class="fa-solid fa-book-open"></i></span>
+            <h3 class="has-text-weight-bold is-size-6" style="color: white; margin: 0;">How to Use SubTracker</h3>
+          </div>
+          <p class="is-size-7 mb-3" style="color: var(--text-muted);">Follow these simple steps to gain total control over your monthly commitments:</p>
+
+          <div class="guide-steps-list">
+            <div class="guide-step-item">
+              <div class="guide-step-number">1</div>
+              <div class="guide-step-content">
+                <div class="guide-step-title">Set Your Monthly Salary</div>
+                <div class="guide-step-desc">Tap <em>Edit Salary</em> on the Dashboard or head to the <em>Settings</em> tab to enter your net monthly take-home salary in Rands (ZAR).</div>
+              </div>
+            </div>
+
+            <div class="guide-step-item">
+              <div class="guide-step-number">2</div>
+              <div class="guide-step-content">
+                <div class="guide-step-title">Add Subscriptions & Recurring Bills</div>
+                <div class="guide-step-desc">Tap the floating <strong>+</strong> button or choose from the popular South African preset chips (Showmax, DSTV, Netflix, Rent, Insurance, Fibre). Customize amount, due date, category, and cycle.</div>
+              </div>
+            </div>
+
+            <div class="guide-step-item">
+              <div class="guide-step-number">3</div>
+              <div class="guide-step-content">
+                <div class="guide-step-title">Track Real-Time Remaining Balance</div>
+                <div class="guide-step-desc">View the top hero card on your Dashboard. The color-coded progress bar shows how much of your paycheck is committed (&lt;35% Green, 35-60% Amber, &gt;60% Red) and what remains for savings or discretionary spending.</div>
+              </div>
+            </div>
+
+            <div class="guide-step-item">
+              <div class="guide-step-number">4</div>
+              <div class="guide-step-content">
+                <div class="guide-step-title">Check Upcoming Deadlines in "Due Soon"</div>
+                <div class="guide-step-desc">Open the <em>Due Soon</em> tab to review payment urgency badges (Overdue, Due Today, Urgent, Coming Soon). Enable system push notifications to get alerted before bills are deducted.</div>
+              </div>
+            </div>
+
+            <div class="guide-step-item">
+              <div class="guide-step-number">5</div>
+              <div class="guide-step-content">
+                <div class="guide-step-title">Mark Paid & Reset When Payday Arrives</div>
+                <div class="guide-step-desc">When a debit order clears, tap <em>Mark Paid</em>. When a new calendar month begins or payday rolls in, visit <em>Settings</em> and click <em>Reset Subscriptions to Pending</em> to start tracking the fresh cycle.</div>
+              </div>
+            </div>
+
+            <div class="guide-step-item">
+              <div class="guide-step-number">6</div>
+              <div class="guide-step-content">
+                <div class="guide-step-title">Install to Home Screen & Backup</div>
+                <div class="guide-step-desc">Tap the download icon in the header to install SubTracker as a standalone app on your smartphone or desktop. Under <em>Settings</em>, export a JSON backup anytime for safekeeping.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section: Developer Footer Card with round centered logo of imsamaritan -->
+        <div class="developer-footer-card p-5 mb-3">
+          <!-- Round and Centered Logo of imsamaritan -->
+          <div class="developer-avatar-container mb-3">
+            <img src="assets/images/imsamaritan.png" 
+                 alt="imsamaritan - Software Developer" 
+                 class="developer-avatar-img">
+          </div>
+
+          <div class="is-flex is-align-items-center is-justify-content-center mb-1" style="gap: 8px;">
+            <h3 class="has-text-weight-bold is-size-5" style="color: white; margin: 0;">imsamaritan</h3>
+            <span class="developer-badge"><i class="fa-solid fa-code"></i> Developer</span>
+          </div>
+
+          <p class="has-text-weight-semibold is-size-6 mb-2" style="color: #818cf8;">
+            Software Developer
+          </p>
+
+          <p class="is-size-7 mb-4 mx-auto" style="color: var(--text-muted); max-width: 320px; line-height: 1.5;">
+            Crafted and maintained with care by <strong>imsamaritan</strong>. Dedicated to building thoughtful, responsive, and intuitive web and mobile solutions for modern users.
+          </p>
+
+          <!-- Developer Actions & Links -->
+          <div class="columns is-mobile is-multiline is-variable is-2 mb-3">
+            <!-- Web App Portfolio Link (Spans 12 columns on mobile) -->
+            <div class="column is-12">
+              <a href="https://imsamaritan.co.za" 
+                 target="_blank" 
+                 rel="noopener noreferrer" 
+                 class="button is-fullwidth is-rounded portfolio-btn">
+                <i class="fa-solid fa-globe mr-2"></i>
+                <span>Web App Portfolio &bull; imsamaritan.co.za</span>
+                <i class="fa-solid fa-arrow-up-right-from-square ml-2 is-size-7" style="opacity: 0.85;"></i>
+              </a>
+            </div>
+
+            <!-- GitHub Profile (6 columns on mobile) -->
+            <div class="column is-6">
+              <a href="https://github.com/imSamaritan" 
+                 target="_blank" 
+                 rel="noopener noreferrer" 
+                 class="button is-small is-dark is-rounded is-fullwidth" 
+                 style="background: rgba(255, 255, 255, 0.08); border-color: var(--border-glass); color: white;">
+                <i class="fa-brands fa-github mr-2"></i> GitHub Profile
+              </a>
+            </div>
+
+            <!-- GitHub Star (6 columns on mobile) -->
+            <div class="column is-6">
+              <a href="https://github.com/imSamaritan/sub-tracker" 
+                 target="_blank" 
+                 rel="noopener noreferrer" 
+                 class="button is-small is-dark is-rounded is-fullwidth" 
+                 style="background: rgba(99, 102, 241, 0.15); border-color: rgba(99, 102, 241, 0.35); color: #a5b4fc;">
+                <i class="fa-solid fa-star mr-2"></i> Star on GitHub
+              </a>
+            </div>
+          </div>
+
+          <div class="developer-footer-divider"></div>
+
+          <div class="is-size-7" style="color: var(--text-dim); line-height: 1.6;">
+            <div class="has-text-weight-medium mb-1">SubTracker &bull; Version 1.2.0 (ZAR Edition)</div>
+            <div>Developed with <i class="fa-solid fa-heart" style="color: #ef4444;"></i> by <strong>imsamaritan</strong> a software developer</div>
+          </div>
+        </div>
+
+      </div>
+
     </main>
 
     <!-- Floating Action Button (FAB) -->
-    <button class="fab-btn" @click="$store.app.openAddModal()" title="Add Subscription">
+    <button class="fab-btn" x-show="$store.app.activeTab !== 'info'" x-transition.opacity @click="$store.app.openAddModal()" title="Add Subscription">
       <i class="fa-solid fa-plus"></i>
     </button>
 
@@ -598,6 +823,10 @@
       <button class="nav-tab-item" :class="{ 'is-active': $store.app.activeTab === 'calendar' }" @click="$store.app.activeTab = 'calendar'">
         <i class="fa-solid fa-calendar-days"></i>
         <span>Due Soon</span>
+      </button>
+      <button class="nav-tab-item" :class="{ 'is-active': $store.app.activeTab === 'info' }" @click="$store.app.activeTab = 'info'">
+        <i class="fa-solid fa-circle-info"></i>
+        <span>Info</span>
       </button>
       <button class="nav-tab-item" :class="{ 'is-active': $store.app.activeTab === 'settings' }" @click="$store.app.activeTab = 'settings'">
         <i class="fa-solid fa-sliders"></i>
@@ -910,7 +1139,7 @@
     if ('caches' in window) {
       caches.keys().then((keys) => {
         keys.forEach((key) => {
-          if (key !== 'subtracker-cache-v11') {
+          if (key !== 'subtracker-cache-v12') {
             caches.delete(key);
           }
         });

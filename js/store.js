@@ -208,7 +208,7 @@ document.addEventListener('alpine:init', () => {
     paymentHistory: [],
 
     // UI View State
-    activeTab: 'dashboard', // 'dashboard', 'subscriptions', 'calendar', 'settings'
+    activeTab: 'dashboard', // 'dashboard', 'subscriptions', 'calendar', 'settings', 'info'
     activeFilter: 'all',    // 'all', 'due', 'paid', 'urgent'
     selectedCategory: 'all',
     searchQuery: '',
