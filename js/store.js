@@ -188,35 +188,12 @@ const StorageRepository = {
 window.StorageRepository = StorageRepository;
 window.SA_PRESETS = SA_PRESETS;
 
-// ============================================================================
-// PWA Installation Deferred Prompt Handling
-// ============================================================================
-let deferredInstallPrompt = null;
-
-window.addEventListener('beforeinstallprompt', (e) => {
-  // Prevent browser's automatic mini-infobar on mobile Chrome
-  e.preventDefault();
-  // Stash the event so it can be triggered on user action
-  deferredInstallPrompt = e;
-  if (window.Alpine && Alpine.store('app')) {
-    Alpine.store('app').canInstallPwa = true;
-  }
-  console.log('SubTracker: beforeinstallprompt captured and ready for user trigger');
-});
-
-window.addEventListener('appinstalled', () => {
-  deferredInstallPrompt = null;
-  if (window.Alpine && Alpine.store('app')) {
-    Alpine.store('app').canInstallPwa = false;
-    Alpine.store('app').triggerToast('SubTracker installed successfully! 🎉', 'is-success');
-  }
-  console.log('SubTracker: App was successfully installed');
-});
-
 document.addEventListener('alpine:init', () => {
   Alpine.store('app', {
     // PWA Install State
-    canInstallPwa: false,
+    canInstallPwa: !!window.deferredInstallPrompt,
+    isInstallModalOpen: false,
+    isAppInstalled: !!window.isSubTrackerInstalled,
     // Database State
     profile: {
       monthlySalary: 28500.00,
@@ -281,9 +258,12 @@ document.addEventListener('alpine:init', () => {
       this.setTheme(savedTheme, false);
 
       // Check if deferred PWA install prompt is available
-      if (deferredInstallPrompt) {
+      if (window.deferredInstallPrompt) {
         this.canInstallPwa = true;
       }
+
+      // Check and synchronize app installation status
+      this.checkAndSyncInstallState();
 
       // Check notification permissions and trigger daily scan
       setTimeout(() => {
@@ -645,65 +625,140 @@ document.addEventListener('alpine:init', () => {
     },
 
     // ----------------------------------------------------
-    // PWA Installation Trigger
+    // Service Worker Installer & PWA Installation Trigger
     // ----------------------------------------------------
+    triggerSwInstaller() {
+      if ('serviceWorker' in navigator) {
+        // Register / update SW which fires the SW install lifecycle event
+        navigator.serviceWorker.register('./sw.js').then((reg) => {
+          reg.update();
+          if (reg.installing) {
+            console.log('SubTracker Service Worker: "install" triggered via registration');
+          }
+          if (reg.active) {
+            reg.active.postMessage({ action: 'install', type: 'INSTALL' });
+          }
+        }).catch((err) => {
+          console.warn('SubTracker SW registration error:', err);
+        });
+
+        if (navigator.serviceWorker.controller) {
+          navigator.serviceWorker.controller.postMessage({ action: 'install', type: 'INSTALL' });
+        }
+      }
+    },
+
+    checkAndSyncInstallState() {
+      const isStandalone = (
+        window.matchMedia('(display-mode: standalone)').matches ||
+        window.matchMedia('(display-mode: fullscreen)').matches ||
+        window.matchMedia('(display-mode: minimal-ui)').matches ||
+        window.navigator.standalone === true ||
+        (document.referrer && document.referrer.startsWith('android-app://'))
+      );
+
+      let storedInstalled = false;
+      try {
+        storedInstalled = localStorage.getItem('subtracker_app_installed') === 'true';
+      } catch (e) {}
+
+      if (isStandalone || storedInstalled || window.isSubTrackerInstalled) {
+        this.setInstalledState(true);
+      } else {
+        this.isAppInstalled = false;
+      }
+
+      // Check for native installed related apps if supported
+      if ('getInstalledRelatedApps' in navigator) {
+        navigator.getInstalledRelatedApps().then((relatedApps) => {
+          if (relatedApps && relatedApps.length > 0) {
+            this.setInstalledState(true);
+          }
+        }).catch((err) => {
+          console.debug('SubTracker getInstalledRelatedApps:', err);
+        });
+      }
+
+      // Dynamic listener for display-mode standalone
+      try {
+        const standaloneMq = window.matchMedia('(display-mode: standalone)');
+        if (standaloneMq && standaloneMq.addEventListener) {
+          standaloneMq.addEventListener('change', (e) => {
+            if (e.matches) {
+              this.setInstalledState(true);
+            }
+          });
+        }
+      } catch (e) {}
+    },
+
+    setInstalledState(installed) {
+      this.isAppInstalled = !!installed;
+      window.isSubTrackerInstalled = !!installed;
+      try {
+        if (installed) {
+          localStorage.setItem('subtracker_app_installed', 'true');
+          document.documentElement.classList.add('app-installed');
+        } else {
+          localStorage.removeItem('subtracker_app_installed');
+          document.documentElement.classList.remove('app-installed');
+        }
+      } catch (e) {}
+    },
+
+    async executeInstallPrompt() {
+      const prompt = window.deferredInstallPrompt;
+      if (!prompt) return false;
+
+      try {
+        prompt.prompt();
+        const choice = await prompt.userChoice;
+        if (choice && choice.outcome === 'accepted') {
+          this.setInstalledState(true);
+          this.triggerToast('SubTracker installed successfully! 🎉', 'is-success');
+        }
+        return true;
+      } catch (err) {
+        console.error('Error invoking PWA install prompt:', err);
+        return false;
+      } finally {
+        window.deferredInstallPrompt = null;
+        this.canInstallPwa = false;
+      }
+    },
+
+    async triggerInstallPrompt() {
+      this.isInstallModalOpen = false;
+      this.triggerSwInstaller();
+      const prompted = await this.executeInstallPrompt();
+      if (!prompted) {
+        this.triggerToast('App installer triggered! 🚀', 'is-success');
+      }
+    },
+
     async installPwa() {
-      // Check if already running in standalone display mode
-      const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
-      if (isStandalone) {
-        this.triggerToast('SubTracker is already installed and running as an app!', 'is-info');
+      if (this.isAppInstalled) {
+        this.triggerToast('SubTracker is already installed on your device!', 'is-info');
         return;
       }
 
-      if (deferredInstallPrompt) {
-        try {
-          // Trigger the browser's native installation prompt
-          deferredInstallPrompt.prompt();
-          const choiceResult = await deferredInstallPrompt.userChoice;
-          if (choiceResult && choiceResult.outcome === 'accepted') {
-            this.triggerToast('Installing SubTracker... 🎉', 'is-success');
-          } else {
-            this.triggerToast('Installation prompt was dismissed', 'is-info');
-          }
-        } catch (err) {
-          console.error('Error invoking PWA install prompt:', err);
-          this.triggerToast('Unable to launch installation prompt', 'is-danger');
-        } finally {
-          deferredInstallPrompt = null;
-          this.canInstallPwa = false;
-        }
+      this.triggerSwInstaller();
+
+      if (!window.deferredInstallPrompt) {
+        await new Promise((resolve) => {
+          const timer = setTimeout(resolve, 350);
+          window.addEventListener('beforeinstallprompt', () => {
+            clearTimeout(timer);
+            resolve();
+          }, { once: true });
+        });
+      }
+
+      if (window.deferredInstallPrompt) {
+        await this.executeInstallPrompt();
       } else {
-        // Fallback guidance for browsers without beforeinstallprompt support (e.g. iOS Safari) or when prompt is not yet ready
-        const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-        if (isIos) {
-          this.triggerToast('To install on iPhone/iPad: tap Share (⎋), then select "Add to Home Screen" 📲', 'is-info');
-        } else {
-          this.triggerToast('To install: click your browser menu (⋮) and select "Install SubTracker" or "Add to Home Screen" 📲', 'is-info');
-        }
+        this.isInstallModalOpen = true;
       }
     }
   });
-});
-
-// Standalone Global Helper & Fallback Trigger
-window.installPwaApp = () => {
-  if (window.Alpine && Alpine.store('app')) {
-    Alpine.store('app').installPwa();
-  } else if (deferredInstallPrompt) {
-    deferredInstallPrompt.prompt();
-  } else {
-    alert('To install SubTracker, open your browser menu and choose "Add to Home Screen" or "Install App".');
-  }
-};
-
-// Fallback direct event binding for the install button
-document.addEventListener('DOMContentLoaded', () => {
-  const pwaBtn = document.getElementById('pwa-install-btn');
-  if (pwaBtn) {
-    pwaBtn.addEventListener('click', () => {
-      if (!window.Alpine) {
-        window.installPwaApp();
-      }
-    });
-  }
 });
