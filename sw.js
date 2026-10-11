@@ -3,7 +3,7 @@
  * Caches core app shell, local CSS/JS, and CDN assets for offline use
  */
 
-const CACHE_NAME = 'subtracker-cache-v11';
+const CACHE_NAME = 'subtracker-cache-v12';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -15,6 +15,7 @@ const ASSETS_TO_CACHE = [
   './assets/icons/icon-192.svg',
   './assets/icons/icon-192.png',
   './assets/icons/icon-512.png',
+  './assets/images/imsamaritan.png',
   'https://cdn.jsdelivr.net/npm/bulma@1.0.2/css/bulma.min.css',
   'https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js',
   'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css'

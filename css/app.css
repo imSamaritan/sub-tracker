@@ -465,21 +465,31 @@ html, body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 3px;
+  gap: 2px;
   color: var(--text-dim);
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   font-weight: 500;
   text-decoration: none;
   cursor: pointer;
-  padding: 6px 12px;
-  border-radius: 12px;
+  padding: 6px 4px;
+  border-radius: 10px;
   transition: color 0.2s ease, transform 0.15s ease;
   background: none;
   border: none;
+  flex: 1;
+  min-width: 0;
+  max-width: 20%;
+}
+
+.nav-tab-item span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 .nav-tab-item i {
-  font-size: 1.2rem;
+  font-size: 1.15rem;
   transition: transform 0.2s ease;
 }
 
@@ -834,7 +844,199 @@ html.app-installed .pwa-install-btn {
 [data-theme="light"] .notification-badge,
 [data-theme="light"] .filter-chip.is-active,
 [data-theme="light"] .app-toast,
-[data-theme="light"] .app-toast * {
+[data-theme="light"] .app-toast *,
+[data-theme="light"] .portfolio-btn,
+[data-theme="light"] .portfolio-btn * {
   color: white !important;
 }
+
+/* ==========================================================================
+   Info & About Tab Styles
+   ========================================================================== */
+.info-feature-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-glass);
+  color: var(--text-muted);
+}
+
+.guide-step-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 0.85rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-md);
+  margin-bottom: 0.65rem;
+  transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+}
+
+.guide-step-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(99, 102, 241, 0.3);
+  transform: translateY(-1px);
+}
+
+.guide-step-number {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--accent-primary-gradient);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.78rem;
+  font-weight: 700;
+  box-shadow: 0 4px 10px rgba(99, 102, 241, 0.4);
+}
+
+.guide-step-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.guide-step-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: white;
+  margin-bottom: 3px;
+}
+
+.guide-step-desc {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+/* Developer Section & Footer */
+.developer-footer-card {
+  text-align: center;
+  background: linear-gradient(180deg, rgba(20, 27, 45, 0.85) 0%, rgba(12, 17, 29, 0.95) 100%);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-xl);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45);
+  position: relative;
+  overflow: hidden;
+}
+
+.developer-avatar-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 0 auto;
+  position: relative;
+}
+
+.developer-avatar-img {
+  width: 104px;
+  height: 104px;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+  margin: 0 auto;
+  border: 3px solid #6366f1;
+  box-shadow: 0 0 24px rgba(99, 102, 241, 0.4), 0 8px 16px rgba(0, 0, 0, 0.4);
+  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.3s ease;
+}
+
+.developer-avatar-img:hover {
+  transform: scale(1.06) rotate(1deg);
+  box-shadow: 0 0 32px rgba(99, 102, 241, 0.65), 0 12px 24px rgba(0, 0, 0, 0.5);
+}
+
+.developer-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(99, 102, 241, 0.15);
+  border: 1px solid rgba(99, 102, 241, 0.35);
+  color: #a5b4fc;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 2px 10px;
+  border-radius: 999px;
+  letter-spacing: 0.02em;
+}
+
+.portfolio-btn {
+  background: var(--accent-primary-gradient) !important;
+  color: white !important;
+  border: none !important;
+  font-weight: 600;
+  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.4);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.portfolio-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(99, 102, 241, 0.55) !important;
+  color: white !important;
+}
+
+.portfolio-btn * {
+  color: white !important;
+}
+
+.developer-footer-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
+  margin: 1.25rem 0;
+  width: 100%;
+}
+
+/* Light Theme overrides for Info & Developer */
+[data-theme="light"] .info-feature-pill {
+  background: #f8fafc;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  color: #475569;
+}
+
+[data-theme="light"] .guide-step-item {
+  background: #f8fafc;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="light"] .guide-step-item:hover {
+  background: #f1f5f9;
+  border-color: rgba(79, 70, 229, 0.2);
+}
+
+[data-theme="light"] .guide-step-title {
+  color: #0f172a !important;
+}
+
+[data-theme="light"] .guide-step-desc {
+  color: #64748b !important;
+}
+
+[data-theme="light"] .developer-footer-card {
+  background: #ffffff !important;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="light"] .developer-avatar-img {
+  border-color: #4f46e5;
+  box-shadow: 0 0 20px rgba(79, 70, 229, 0.3), 0 8px 16px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] .developer-badge {
+  background: rgba(79, 70, 229, 0.1);
+  border-color: rgba(79, 70, 229, 0.3);
+  color: #4f46e5 !important;
+}
+
+[data-theme="light"] .developer-footer-divider {
+  background: rgba(0, 0, 0, 0.08);
+}
+
 
