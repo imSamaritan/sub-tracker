@@ -188,8 +188,35 @@ const StorageRepository = {
 window.StorageRepository = StorageRepository;
 window.SA_PRESETS = SA_PRESETS;
 
+// ============================================================================
+// PWA Installation Deferred Prompt Handling
+// ============================================================================
+let deferredInstallPrompt = null;
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  // Prevent browser's automatic mini-infobar on mobile Chrome
+  e.preventDefault();
+  // Stash the event so it can be triggered on user action
+  deferredInstallPrompt = e;
+  if (window.Alpine && Alpine.store('app')) {
+    Alpine.store('app').canInstallPwa = true;
+  }
+  console.log('SubTracker: beforeinstallprompt captured and ready for user trigger');
+});
+
+window.addEventListener('appinstalled', () => {
+  deferredInstallPrompt = null;
+  if (window.Alpine && Alpine.store('app')) {
+    Alpine.store('app').canInstallPwa = false;
+    Alpine.store('app').triggerToast('SubTracker installed successfully! 🎉', 'is-success');
+  }
+  console.log('SubTracker: App was successfully installed');
+});
+
 document.addEventListener('alpine:init', () => {
   Alpine.store('app', {
+    // PWA Install State
+    canInstallPwa: false,
     // Database State
     profile: {
       monthlySalary: 28500.00,
@@ -252,6 +279,11 @@ document.addEventListener('alpine:init', () => {
       // Initialize theme from localStorage or profile (fallback to 'dark')
       const savedTheme = localStorage.getItem('subtracker_theme') || this.profile.theme || 'dark';
       this.setTheme(savedTheme, false);
+
+      // Check if deferred PWA install prompt is available
+      if (deferredInstallPrompt) {
+        this.canInstallPwa = true;
+      }
 
       // Check notification permissions and trigger daily scan
       setTimeout(() => {
@@ -610,6 +642,68 @@ document.addEventListener('alpine:init', () => {
       if (showToastNotice) {
         this.triggerToast(`Switched to ${this.theme === 'dark' ? 'Dark' : 'Light'} Mode`, 'is-info');
       }
+    },
+
+    // ----------------------------------------------------
+    // PWA Installation Trigger
+    // ----------------------------------------------------
+    async installPwa() {
+      // Check if already running in standalone display mode
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+      if (isStandalone) {
+        this.triggerToast('SubTracker is already installed and running as an app!', 'is-info');
+        return;
+      }
+
+      if (deferredInstallPrompt) {
+        try {
+          // Trigger the browser's native installation prompt
+          deferredInstallPrompt.prompt();
+          const choiceResult = await deferredInstallPrompt.userChoice;
+          if (choiceResult && choiceResult.outcome === 'accepted') {
+            this.triggerToast('Installing SubTracker... 🎉', 'is-success');
+          } else {
+            this.triggerToast('Installation prompt was dismissed', 'is-info');
+          }
+        } catch (err) {
+          console.error('Error invoking PWA install prompt:', err);
+          this.triggerToast('Unable to launch installation prompt', 'is-danger');
+        } finally {
+          deferredInstallPrompt = null;
+          this.canInstallPwa = false;
+        }
+      } else {
+        // Fallback guidance for browsers without beforeinstallprompt support (e.g. iOS Safari) or when prompt is not yet ready
+        const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+        if (isIos) {
+          this.triggerToast('To install on iPhone/iPad: tap Share (⎋), then select "Add to Home Screen" 📲', 'is-info');
+        } else {
+          this.triggerToast('To install: click your browser menu (⋮) and select "Install SubTracker" or "Add to Home Screen" 📲', 'is-info');
+        }
+      }
     }
   });
+});
+
+// Standalone Global Helper & Fallback Trigger
+window.installPwaApp = () => {
+  if (window.Alpine && Alpine.store('app')) {
+    Alpine.store('app').installPwa();
+  } else if (deferredInstallPrompt) {
+    deferredInstallPrompt.prompt();
+  } else {
+    alert('To install SubTracker, open your browser menu and choose "Add to Home Screen" or "Install App".');
+  }
+};
+
+// Fallback direct event binding for the install button
+document.addEventListener('DOMContentLoaded', () => {
+  const pwaBtn = document.getElementById('pwa-install-btn');
+  if (pwaBtn) {
+    pwaBtn.addEventListener('click', () => {
+      if (!window.Alpine) {
+        window.installPwaApp();
+      }
+    });
+  }
 });

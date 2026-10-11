@@ -17,12 +17,12 @@
   <!-- Font Awesome CDN -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <!-- Custom App CSS -->
-  <link rel="stylesheet" href="css/app.css?v=8">
+  <link rel="stylesheet" href="css/app.css?v=9">
 
   <!-- App Core Logic -->
-  <script src="js/utils.js?v=8"></script>
-  <script src="js/notifications.js?v=8"></script>
-  <script src="js/store.js?v=8"></script>
+  <script src="js/utils.js?v=9"></script>
+  <script src="js/notifications.js?v=9"></script>
+  <script src="js/store.js?v=9"></script>
 
   <!-- Alpine.js CDN (defer) -->
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
@@ -49,9 +49,9 @@
 
       <!-- Header Action Buttons -->
       <div class="is-flex is-align-items-center" style="gap: 8px;">
-        <!-- Salary quick edit -->
-        <button class="icon-btn-round" @click="$store.app.salaryInput = $store.app.profile.monthlySalary; $store.app.isSalaryModalOpen = true" title="Adjust Salary">
-          <i class="fa-solid fa-money-bill-wave" style="color: #10b981;"></i>
+        <!-- Install App PWA Trigger -->
+        <button class="icon-btn-round" @click="$store.app.installPwa()" id="pwa-install-btn" title="Install SubTracker App" aria-label="Install SubTracker App">
+          <i class="fa-solid fa-download" style="color: #38bdf8;"></i>
         </button>
 
         <!-- Theme Mode Toggle Button -->
@@ -817,7 +817,7 @@
     if ('caches' in window) {
       caches.keys().then((keys) => {
         keys.forEach((key) => {
-          if (key !== 'subtracker-cache-v8') {
+          if (key !== 'subtracker-cache-v9') {
             caches.delete(key);
           }
         });
