@@ -9,20 +9,78 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" sizes="192x192" href="assets/icons/icon-192.png">
   <link rel="icon" type="image/svg+xml" href="assets/icons/icon-192.svg">
-  <link rel="apple-touch-icon" href="assets/icons/icon-192.svg">
+  <link rel="apple-touch-icon" href="assets/icons/icon-192.png">
+
+  <!-- Early PWA Detection & Install Prompt Capture -->
+  <script>
+    (function() {
+      function checkIsStandalone() {
+        return (
+          window.matchMedia('(display-mode: standalone)').matches ||
+          window.matchMedia('(display-mode: fullscreen)').matches ||
+          window.matchMedia('(display-mode: minimal-ui)').matches ||
+          window.navigator.standalone === true ||
+          (document.referrer && document.referrer.startsWith('android-app://'))
+        );
+      }
+
+      var isStandalone = checkIsStandalone();
+      var storedInstalled = false;
+      try {
+        storedInstalled = localStorage.getItem('subtracker_app_installed') === 'true';
+      } catch (e) {}
+
+      // App is marked as installed if running in standalone mode or confirmed installed previously
+      var isInstalled = isStandalone || storedInstalled;
+      window.isSubTrackerInstalled = isInstalled;
+
+      if (isInstalled) {
+        document.documentElement.classList.add('app-installed');
+      }
+
+      window.deferredInstallPrompt = null;
+      window.addEventListener('beforeinstallprompt', function(e) {
+        e.preventDefault();
+        window.deferredInstallPrompt = e;
+        window.isSubTrackerInstalled = false;
+        try { localStorage.removeItem('subtracker_app_installed'); } catch (err) {}
+        document.documentElement.classList.remove('app-installed');
+
+        if (window.Alpine && Alpine.store('app')) {
+          Alpine.store('app').canInstallPwa = true;
+          Alpine.store('app').setInstalledState(false);
+        }
+      });
+
+      window.addEventListener('appinstalled', function() {
+        window.deferredInstallPrompt = null;
+        window.isSubTrackerInstalled = true;
+        try { localStorage.setItem('subtracker_app_installed', 'true'); } catch (err) {}
+        document.documentElement.classList.add('app-installed');
+
+        if (window.Alpine && Alpine.store('app')) {
+          Alpine.store('app').canInstallPwa = false;
+          Alpine.store('app').isInstallModalOpen = false;
+          Alpine.store('app').setInstalledState(true);
+          Alpine.store('app').triggerToast('SubTracker installed successfully! 🎉', 'is-success');
+        }
+      });
+    })();
+  </script>
 
   <!-- Bulma CSS CDN -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.2/css/bulma.min.css">
   <!-- Font Awesome CDN -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <!-- Custom App CSS -->
-  <link rel="stylesheet" href="css/app.css?v=9">
+  <link rel="stylesheet" href="css/app.css?v=11">
 
   <!-- App Core Logic -->
-  <script src="js/utils.js?v=9"></script>
-  <script src="js/notifications.js?v=9"></script>
-  <script src="js/store.js?v=9"></script>
+  <script src="js/utils.js?v=11"></script>
+  <script src="js/notifications.js?v=11"></script>
+  <script src="js/store.js?v=11"></script>
 
   <!-- Alpine.js CDN (defer) -->
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
@@ -49,8 +107,14 @@
 
       <!-- Header Action Buttons -->
       <div class="is-flex is-align-items-center" style="gap: 8px;">
-        <!-- Install App PWA Trigger -->
-        <button class="icon-btn-round" @click="$store.app.installPwa()" id="pwa-install-btn" title="Install SubTracker App" aria-label="Install SubTracker App">
+        <!-- Install App PWA Trigger (Only visible when app is not installed) -->
+        <button class="icon-btn-round" 
+                x-show="!$store.app.isAppInstalled" 
+                x-cloak 
+                @click="$store.app.installPwa()" 
+                id="pwa-install-btn" 
+                title="Install SubTracker App" 
+                aria-label="Install SubTracker App">
           <i class="fa-solid fa-download" style="color: #38bdf8;"></i>
         </button>
 
@@ -810,6 +874,35 @@
       </div>
     </div>
 
+    <!-- ================================================================= -->
+    <!-- BOTTOM SHEET: INSTALL APP PROMPT MODAL                            -->
+    <!-- ================================================================= -->
+    <div class="bottom-sheet-backdrop" x-show="$store.app.isInstallModalOpen" x-transition.opacity.duration.250ms x-cloak @click.self="$store.app.isInstallModalOpen = false">
+      <div class="bottom-sheet-container" x-show="$store.app.isInstallModalOpen" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="transform translate-y-full" x-transition:enter-end="transform translate-y-0" x-transition:leave="transition ease-in duration-200" x-transition:leave-start="transform translate-y-0" x-transition:leave-end="transform translate-y-full">
+        <div class="bottom-sheet-handle"></div>
+        <div class="is-flex is-justify-content-space-between is-align-items-center mb-3">
+          <div class="is-flex is-align-items-center" style="gap: 10px;">
+            <div class="sub-icon-box" style="background: var(--accent-primary-gradient); width: 36px; height: 36px; color: white;">
+              <i class="fa-solid fa-download"></i>
+            </div>
+            <h3 class="has-text-weight-bold is-size-5" style="color: white; margin: 0;">Install SubTracker App</h3>
+          </div>
+          <button class="delete is-medium" @click="$store.app.isInstallModalOpen = false"></button>
+        </div>
+
+        <p class="is-size-7 mb-4" style="color: var(--text-muted);">
+          Install SubTracker directly on your device for standalone offline access, instant home screen launch, and automatic payment notifications.
+        </p>
+
+        <div class="field mt-4">
+          <button class="button is-primary is-fullwidth is-medium" style="background: var(--accent-primary-gradient); border-radius: var(--radius-md);" @click="$store.app.triggerInstallPrompt()">
+            <i class="fa-solid fa-download mr-2"></i>
+            <span>Install SubTracker Now</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
   </div>
 
   <!-- Service Worker Registration & Cache Purge -->
@@ -817,20 +910,18 @@
     if ('caches' in window) {
       caches.keys().then((keys) => {
         keys.forEach((key) => {
-          if (key !== 'subtracker-cache-v9') {
+          if (key !== 'subtracker-cache-v11') {
             caches.delete(key);
           }
         });
       });
     }
     if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js').then((reg) => {
-          reg.update();
-          console.log('SubTracker Service Worker registered successfully:', reg.scope);
-        }).catch((err) => {
-          console.warn('Service Worker registration skipped or failed:', err);
-        });
+      navigator.serviceWorker.register('./sw.js').then((reg) => {
+        reg.update();
+        console.log('SubTracker Service Worker registered successfully:', reg.scope);
+      }).catch((err) => {
+        console.warn('Service Worker registration skipped or failed:', err);
       });
     }
   </script>

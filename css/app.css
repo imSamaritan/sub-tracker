@@ -643,6 +643,21 @@ html, body {
 /* Utility Animations */
 [x-cloak] { display: none !important; }
 
+/* Hide install button when app is installed on device or running in standalone mode */
+@media all and (display-mode: standalone),
+       all and (display-mode: fullscreen),
+       all and (display-mode: minimal-ui) {
+  #pwa-install-btn,
+  .pwa-install-btn {
+    display: none !important;
+  }
+}
+
+html.app-installed #pwa-install-btn,
+html.app-installed .pwa-install-btn {
+  display: none !important;
+}
+
 /* ==========================================================================
    Light Mode Component Overrides
    ========================================================================== */

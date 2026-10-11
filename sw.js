@@ -3,7 +3,7 @@
  * Caches core app shell, local CSS/JS, and CDN assets for offline use
  */
 
-const CACHE_NAME = 'subtracker-cache-v9';
+const CACHE_NAME = 'subtracker-cache-v11';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -13,15 +13,19 @@ const ASSETS_TO_CACHE = [
   './js/notifications.js',
   './js/store.js',
   './assets/icons/icon-192.svg',
+  './assets/icons/icon-192.png',
+  './assets/icons/icon-512.png',
   'https://cdn.jsdelivr.net/npm/bulma@1.0.2/css/bulma.min.css',
   'https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js',
   'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css'
 ];
 
+// Service Worker install event - caches assets for offline installation
 self.addEventListener('install', (event) => {
+  console.log('SubTracker Service Worker: "install" lifecycle executing');
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS_TO_CACHE).catch(err => {
+      return cache.addAll(ASSETS_TO_CACHE).catch((err) => {
         console.warn('Some external assets could not be pre-cached, proceeding:', err);
       });
     })
@@ -29,7 +33,9 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
+// Service Worker activate event - cleans up older cache versions
 self.addEventListener('activate', (event) => {
+  console.log('SubTracker Service Worker: "activate" lifecycle executing');
   event.waitUntil(
     caches.keys().then((keys) => {
       return Promise.all(
@@ -42,6 +48,24 @@ self.addEventListener('activate', (event) => {
     })
   );
   self.clients.claim();
+});
+
+// Explicit message event handler to trigger installer "install" in sw.js
+self.addEventListener('message', (event) => {
+  if (event.data && (event.data.action === 'install' || event.data.type === 'INSTALL' || event.data === 'install')) {
+    console.log('SubTracker Service Worker: Installer "install" action triggered via client message');
+    event.waitUntil(
+      caches.open(CACHE_NAME).then((cache) => {
+        return cache.addAll(ASSETS_TO_CACHE);
+      }).catch((err) => {
+        console.warn('Service Worker: Installer cache warning:', err);
+      })
+    );
+    self.skipWaiting();
+    if (event.ports && event.ports[0]) {
+      event.ports[0].postMessage({ status: 'installed', cache: CACHE_NAME });
+    }
+  }
 });
 
 // Network First with Cache Fallback for local assets; Cache First for CDN
