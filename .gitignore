@@ -10,3 +10,7 @@ Thumbs.db
 # Backups
 *.backup
 *.tmp
+
+# Backend
+api/vendor/
+api/.env
