@@ -89,6 +89,11 @@ return function (App $app): void {
         ->add($verifiedMiddleware)
         ->add($authMiddleware);
 
+    // Payments route (at root level for convenience)
+    $app->get('/payments', [\SubTracker\Controllers\PaymentController::class, 'list'])
+        ->add($verifiedMiddleware)
+        ->add($authMiddleware);
+
     // Mount Auth directly on /auth for convenience
     $app->group('/auth', $registerAuthRoutes);
 
@@ -123,6 +128,11 @@ return function (App $app): void {
 
         // Subscriptions routes in /v1
         $group->group('/subscriptions', $registerSubRoutes)
+            ->add($verifiedMiddleware)
+            ->add($authMiddleware);
+
+        // Payments route in /v1
+        $group->get('/payments', [\SubTracker\Controllers\PaymentController::class, 'list'])
             ->add($verifiedMiddleware)
             ->add($authMiddleware);
 
