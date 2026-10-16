@@ -168,4 +168,22 @@ return [
             $c->get(\SubTracker\Repositories\PaymentRepository::class)
         );
     },
+
+    \SubTracker\Services\BackupService::class => function (ContainerInterface $c): \SubTracker\Services\BackupService {
+        return new \SubTracker\Services\BackupService(
+            $c->get(PDO::class),
+            $c->get(\SubTracker\Repositories\ProfileRepository::class),
+            $c->get(\SubTracker\Repositories\SubscriptionRepository::class),
+            $c->get(\SubTracker\Repositories\PaymentRepository::class),
+            $c->get(\SubTracker\Repositories\CategoryRepository::class),
+            $c->get(\SubTracker\Services\RateLimiter::class)
+        );
+    },
+
+    \SubTracker\Controllers\BackupController::class => function (ContainerInterface $c): \SubTracker\Controllers\BackupController {
+        return new \SubTracker\Controllers\BackupController(
+            $c->get(\SubTracker\Services\BackupService::class),
+            $c->get(\SubTracker\Repositories\SubscriptionRepository::class)
+        );
+    },
 ];
