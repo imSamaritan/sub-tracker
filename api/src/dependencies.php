@@ -139,4 +139,23 @@ return [
             $c->get(\SubTracker\Services\AlertService::class)
         );
     },
+
+    \SubTracker\Repositories\SubscriptionRepository::class => function (ContainerInterface $c): \SubTracker\Repositories\SubscriptionRepository {
+        return new \SubTracker\Repositories\SubscriptionRepository($c->get(PDO::class));
+    },
+
+    \SubTracker\Controllers\SubscriptionController::class => function (ContainerInterface $c): \SubTracker\Controllers\SubscriptionController {
+        return new \SubTracker\Controllers\SubscriptionController(
+            $c->get(\SubTracker\Repositories\SubscriptionRepository::class),
+            $c->get(\SubTracker\Repositories\CategoryRepository::class)
+        );
+    },
+
+    \SubTracker\Controllers\StateController::class => function (ContainerInterface $c): \SubTracker\Controllers\StateController {
+        return new \SubTracker\Controllers\StateController(
+            $c->get(PDO::class),
+            $c->get(\SubTracker\Repositories\ProfileRepository::class),
+            $c->get(\SubTracker\Repositories\SubscriptionRepository::class)
+        );
+    },
 ];
