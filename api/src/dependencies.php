@@ -158,4 +158,14 @@ return [
             $c->get(\SubTracker\Repositories\SubscriptionRepository::class)
         );
     },
+
+    \SubTracker\Repositories\PaymentRepository::class => function (ContainerInterface $c): \SubTracker\Repositories\PaymentRepository {
+        return new \SubTracker\Repositories\PaymentRepository($c->get(PDO::class));
+    },
+
+    \SubTracker\Controllers\PaymentController::class => function (ContainerInterface $c): \SubTracker\Controllers\PaymentController {
+        return new \SubTracker\Controllers\PaymentController(
+            $c->get(\SubTracker\Repositories\PaymentRepository::class)
+        );
+    },
 ];
