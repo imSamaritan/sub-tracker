@@ -22,6 +22,15 @@ return [
         'password_reset_ttl_minutes' => (int) ($_ENV['PASSWORD_RESET_TTL_MINUTES'] ?? 60),
         'email_verify_ttl_hours' => (int) ($_ENV['EMAIL_VERIFY_TTL_HOURS'] ?? 24),
         'unverified_account_ttl_days' => (int) ($_ENV['UNVERIFIED_ACCOUNT_TTL_DAYS'] ?? 7),
+        'mail' => [
+            'host' => $_ENV['MAIL_HOST'] ?? '',
+            'port' => (int) ($_ENV['MAIL_PORT'] ?? 465),
+            'encryption' => $_ENV['MAIL_ENCRYPTION'] ?? 'ssl',
+            'username' => $_ENV['MAIL_USERNAME'] ?? '',
+            'password' => $_ENV['MAIL_PASSWORD'] ?? '',
+            'from' => $_ENV['MAIL_FROM'] ?? 'no-reply@subtracker.local',
+            'from_name' => $_ENV['MAIL_FROM_NAME'] ?? 'SubTracker',
+        ],
     ],
 
     PDO::class => function (ContainerInterface $c): PDO {
@@ -55,6 +64,10 @@ return [
         return new \SubTracker\Services\RateLimiter($c->get(PDO::class));
     },
 
+    \SubTracker\Services\MailService::class => function (ContainerInterface $c): \SubTracker\Services\MailService {
+        return new \SubTracker\Services\MailService($c->get('settings'));
+    },
+
     \SubTracker\Middleware\ApiErrorHandler::class => function (ContainerInterface $c): \SubTracker\Middleware\ApiErrorHandler {
         return new \SubTracker\Middleware\ApiErrorHandler($c->get(\Psr\Http\Message\ResponseFactoryInterface::class));
     },
@@ -65,5 +78,27 @@ return [
 
     \SubTracker\Middleware\LiteSpeedAuthMiddleware::class => function (): \SubTracker\Middleware\LiteSpeedAuthMiddleware {
         return new \SubTracker\Middleware\LiteSpeedAuthMiddleware();
+    },
+
+    \SubTracker\Middleware\AuthMiddleware::class => function (ContainerInterface $c): \SubTracker\Middleware\AuthMiddleware {
+        return new \SubTracker\Middleware\AuthMiddleware(
+            $c->get(PDO::class),
+            $c->get(\Psr\Http\Message\ResponseFactoryInterface::class)
+        );
+    },
+
+    \SubTracker\Middleware\VerifiedEmailMiddleware::class => function (ContainerInterface $c): \SubTracker\Middleware\VerifiedEmailMiddleware {
+        return new \SubTracker\Middleware\VerifiedEmailMiddleware(
+            $c->get(\Psr\Http\Message\ResponseFactoryInterface::class)
+        );
+    },
+
+    \SubTracker\Controllers\AuthController::class => function (ContainerInterface $c): \SubTracker\Controllers\AuthController {
+        return new \SubTracker\Controllers\AuthController(
+            $c->get(PDO::class),
+            $c->get(\SubTracker\Services\RateLimiter::class),
+            $c->get(\SubTracker\Services\MailService::class),
+            $c->get('settings')
+        );
     },
 ];
