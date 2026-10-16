@@ -106,6 +106,57 @@ class Validator
     }
 
     /**
+     * Validate profile update payload.
+     *
+     * @param array $data
+     * @return array<string, string> Field-level error messages
+     */
+    public static function validateProfileUpdate(array $data): array
+    {
+        $errors = [];
+
+        if (array_key_exists('monthlySalary', $data)) {
+            $salary = $data['monthlySalary'];
+            if (!is_numeric($salary) || (float) $salary < 0 || (float) $salary > 9999999999.99) {
+                $errors['monthlySalary'] = 'Please enter a valid salary amount.';
+            }
+        }
+
+        if (array_key_exists('salaryDay', $data)) {
+            $salaryDay = $data['salaryDay'];
+            if ($salaryDay !== null) {
+                if (!is_numeric($salaryDay) || (int) $salaryDay < 1 || (int) $salaryDay > 31 || (int) $salaryDay != $salaryDay) {
+                    $errors['salaryDay'] = 'Salary day must be between 1 and 31.';
+                }
+            }
+        }
+
+        if (array_key_exists('theme', $data)) {
+            $theme = $data['theme'];
+            if ($theme !== 'dark' && $theme !== 'light') {
+                $errors['theme'] = 'Theme must be either "dark" or "light".';
+            }
+        }
+
+        if (array_key_exists('systemNotificationsEnabled', $data)) {
+            $val = $data['systemNotificationsEnabled'];
+            if (!is_bool($val) && $val !== 0 && $val !== 1 && $val !== '0' && $val !== '1' && $val !== 'true' && $val !== 'false') {
+                $errors['systemNotificationsEnabled'] = 'System notifications enabled must be a boolean.';
+            }
+        }
+
+        if (array_key_exists('timezone', $data)) {
+            $tz = (string) $data['timezone'];
+            $tzErr = self::validateTimezone($tz);
+            if ($tzErr !== null) {
+                $errors['timezone'] = $tzErr;
+            }
+        }
+
+        return $errors;
+    }
+
+    /**
      * Validate timezone against IANA timezone database.
      */
     public static function validateTimezone(string $timezone): ?string

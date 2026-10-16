@@ -101,4 +101,14 @@ return [
             $c->get('settings')
         );
     },
+
+    \SubTracker\Repositories\ProfileRepository::class => function (ContainerInterface $c): \SubTracker\Repositories\ProfileRepository {
+        return new \SubTracker\Repositories\ProfileRepository($c->get(PDO::class));
+    },
+
+    \SubTracker\Controllers\ProfileController::class => function (ContainerInterface $c): \SubTracker\Controllers\ProfileController {
+        return new \SubTracker\Controllers\ProfileController(
+            $c->get(\SubTracker\Repositories\ProfileRepository::class)
+        );
+    },
 ];
