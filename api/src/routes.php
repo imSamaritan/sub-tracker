@@ -94,6 +94,17 @@ return function (App $app): void {
         ->add($verifiedMiddleware)
         ->add($authMiddleware);
 
+    // Backup & Demo Reset routes (at root level for convenience)
+    $app->get('/backup', [\SubTracker\Controllers\BackupController::class, 'export'])
+        ->add($verifiedMiddleware)
+        ->add($authMiddleware);
+    $app->post('/backup', [\SubTracker\Controllers\BackupController::class, 'restore'])
+        ->add($verifiedMiddleware)
+        ->add($authMiddleware);
+    $app->post('/account/reset-demo', [\SubTracker\Controllers\BackupController::class, 'resetDemo'])
+        ->add($verifiedMiddleware)
+        ->add($authMiddleware);
+
     // Mount Auth directly on /auth for convenience
     $app->group('/auth', $registerAuthRoutes);
 
@@ -133,6 +144,17 @@ return function (App $app): void {
 
         // Payments route in /v1
         $group->get('/payments', [\SubTracker\Controllers\PaymentController::class, 'list'])
+            ->add($verifiedMiddleware)
+            ->add($authMiddleware);
+
+        // Backup & Demo Reset in /v1
+        $group->get('/backup', [\SubTracker\Controllers\BackupController::class, 'export'])
+            ->add($verifiedMiddleware)
+            ->add($authMiddleware);
+        $group->post('/backup', [\SubTracker\Controllers\BackupController::class, 'restore'])
+            ->add($verifiedMiddleware)
+            ->add($authMiddleware);
+        $group->post('/account/reset-demo', [\SubTracker\Controllers\BackupController::class, 'resetDemo'])
             ->add($verifiedMiddleware)
             ->add($authMiddleware);
 
