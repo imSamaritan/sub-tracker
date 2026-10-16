@@ -46,4 +46,24 @@ return [
 
         return $pdo;
     },
+
+    \Psr\Http\Message\ResponseFactoryInterface::class => function (): \Psr\Http\Message\ResponseFactoryInterface {
+        return new \Slim\Psr7\Factory\ResponseFactory();
+    },
+
+    \SubTracker\Services\RateLimiter::class => function (ContainerInterface $c): \SubTracker\Services\RateLimiter {
+        return new \SubTracker\Services\RateLimiter($c->get(PDO::class));
+    },
+
+    \SubTracker\Middleware\ApiErrorHandler::class => function (ContainerInterface $c): \SubTracker\Middleware\ApiErrorHandler {
+        return new \SubTracker\Middleware\ApiErrorHandler($c->get(\Psr\Http\Message\ResponseFactoryInterface::class));
+    },
+
+    \SubTracker\Middleware\JsonBodyParserMiddleware::class => function (ContainerInterface $c): \SubTracker\Middleware\JsonBodyParserMiddleware {
+        return new \SubTracker\Middleware\JsonBodyParserMiddleware($c->get(\Psr\Http\Message\ResponseFactoryInterface::class));
+    },
+
+    \SubTracker\Middleware\LiteSpeedAuthMiddleware::class => function (): \SubTracker\Middleware\LiteSpeedAuthMiddleware {
+        return new \SubTracker\Middleware\LiteSpeedAuthMiddleware();
+    },
 ];
