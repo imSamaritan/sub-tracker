@@ -44,13 +44,29 @@ return function (App $app): void {
     // Root-level health check
     $app->get('/health', HealthController::class);
 
+    // Profile routes (at root level for convenience)
+    $app->get('/profile', [\SubTracker\Controllers\ProfileController::class, 'get'])
+        ->add($verifiedMiddleware)
+        ->add($authMiddleware);
+    $app->patch('/profile', [\SubTracker\Controllers\ProfileController::class, 'update'])
+        ->add($verifiedMiddleware)
+        ->add($authMiddleware);
+
     // Mount Auth directly on /auth for convenience
     $app->group('/auth', $registerAuthRoutes);
 
     // API version 1 route group
-    $app->group('/v1', function (RouteCollectorProxy $group) use ($registerAuthRoutes): void {
+    $app->group('/v1', function (RouteCollectorProxy $group) use ($registerAuthRoutes, $authMiddleware, $verifiedMiddleware): void {
         $group->get('/health', HealthController::class);
         $group->group('/auth', $registerAuthRoutes);
+
+        // Profile routes in /v1
+        $group->get('/profile', [\SubTracker\Controllers\ProfileController::class, 'get'])
+            ->add($verifiedMiddleware)
+            ->add($authMiddleware);
+        $group->patch('/profile', [\SubTracker\Controllers\ProfileController::class, 'update'])
+            ->add($verifiedMiddleware)
+            ->add($authMiddleware);
 
         // Debug route to test JSON body parsing and method override in development
         if (filter_var($_ENV['APP_DEBUG'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
