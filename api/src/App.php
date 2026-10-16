@@ -45,13 +45,23 @@ class App
             $app->setBasePath(rtrim($basePath, '/'));
         }
 
-        // 6. Register standard Slim middleware
-        $app->addBodyParsingMiddleware();
+        // 6. Register middleware pipeline (Slim runs middleware in LIFO order)
+        // Inner: parses JSON request bodies and rejects malformed JSON with 400
+        $app->add($container->get(\SubTracker\Middleware\JsonBodyParserMiddleware::class));
+
+        // Method override (X-HTTP-Method-Override for PUT/PATCH/DELETE under WAF)
         $app->add(new MethodOverrideMiddleware());
+
+        // LiteSpeed / Apache FastCGI authorization header normalization
+        $app->add($container->get(\SubTracker\Middleware\LiteSpeedAuthMiddleware::class));
+
+        // Routing middleware
         $app->addRoutingMiddleware();
 
+        // Outermost: Catch all exceptions and return standardized JSON error envelopes
         $debug = filter_var($_ENV['APP_DEBUG'] ?? false, FILTER_VALIDATE_BOOLEAN);
-        $app->addErrorMiddleware($debug, true, true);
+        $errorMiddleware = $app->addErrorMiddleware($debug, true, true);
+        $errorMiddleware->setDefaultErrorHandler($container->get(\SubTracker\Middleware\ApiErrorHandler::class));
 
         // 7. Register routes
         $routes = require __DIR__ . '/routes.php';
