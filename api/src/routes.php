@@ -3,15 +3,54 @@ declare(strict_types=1);
 
 use Slim\App;
 use Slim\Routing\RouteCollectorProxy;
+use SubTracker\Controllers\AuthController;
 use SubTracker\Controllers\HealthController;
+use SubTracker\Middleware\AuthMiddleware;
+use SubTracker\Middleware\VerifiedEmailMiddleware;
 
 return function (App $app): void {
-    // Root level ping / health check
+    $container = $app->getContainer();
+    $authMiddleware = $container->get(AuthMiddleware::class);
+    $verifiedMiddleware = $container->get(VerifiedEmailMiddleware::class);
+
+    // Route handler for Auth group
+    $registerAuthRoutes = function (RouteCollectorProxy $group) use ($authMiddleware, $verifiedMiddleware): void {
+        // Public endpoints
+        $group->post('/register', [AuthController::class, 'register']);
+        $group->post('/verify-email', [AuthController::class, 'verifyEmail']);
+        $group->post('/resend-verification', [AuthController::class, 'resendVerification']);
+        $group->post('/login', [AuthController::class, 'login']);
+        $group->post('/forgot-password', [AuthController::class, 'forgotPassword']);
+        $group->post('/reset-password', [AuthController::class, 'resetPassword']);
+
+        // Authenticated endpoints
+        $group->post('/logout', [AuthController::class, 'logout'])
+            ->add($authMiddleware);
+
+        // Authenticated + Verified Email endpoints
+        $group->get('/me', [AuthController::class, 'me'])
+            ->add($verifiedMiddleware)
+            ->add($authMiddleware);
+
+        $group->put('/password', [AuthController::class, 'changePassword'])
+            ->add($verifiedMiddleware)
+            ->add($authMiddleware);
+
+        $group->delete('/account', [AuthController::class, 'deleteAccount'])
+            ->add($verifiedMiddleware)
+            ->add($authMiddleware);
+    };
+
+    // Root-level health check
     $app->get('/health', HealthController::class);
 
+    // Mount Auth directly on /auth for convenience
+    $app->group('/auth', $registerAuthRoutes);
+
     // API version 1 route group
-    $app->group('/v1', function (RouteCollectorProxy $group): void {
+    $app->group('/v1', function (RouteCollectorProxy $group) use ($registerAuthRoutes): void {
         $group->get('/health', HealthController::class);
+        $group->group('/auth', $registerAuthRoutes);
 
         // Debug route to test JSON body parsing and method override in development
         if (filter_var($_ENV['APP_DEBUG'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
