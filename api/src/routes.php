@@ -52,6 +52,17 @@ return function (App $app): void {
         ->add($verifiedMiddleware)
         ->add($authMiddleware);
 
+    // Categories and Dashboard/Alerts routes (at root level for convenience)
+    $app->get('/categories', [\SubTracker\Controllers\CategoryController::class, 'list'])
+        ->add($verifiedMiddleware)
+        ->add($authMiddleware);
+    $app->get('/dashboard/summary', [\SubTracker\Controllers\DashboardController::class, 'summary'])
+        ->add($verifiedMiddleware)
+        ->add($authMiddleware);
+    $app->get('/alerts', [\SubTracker\Controllers\DashboardController::class, 'alerts'])
+        ->add($verifiedMiddleware)
+        ->add($authMiddleware);
+
     // Mount Auth directly on /auth for convenience
     $app->group('/auth', $registerAuthRoutes);
 
@@ -65,6 +76,17 @@ return function (App $app): void {
             ->add($verifiedMiddleware)
             ->add($authMiddleware);
         $group->patch('/profile', [\SubTracker\Controllers\ProfileController::class, 'update'])
+            ->add($verifiedMiddleware)
+            ->add($authMiddleware);
+
+        // Categories & Dashboard in /v1
+        $group->get('/categories', [\SubTracker\Controllers\CategoryController::class, 'list'])
+            ->add($verifiedMiddleware)
+            ->add($authMiddleware);
+        $group->get('/dashboard/summary', [\SubTracker\Controllers\DashboardController::class, 'summary'])
+            ->add($verifiedMiddleware)
+            ->add($authMiddleware);
+        $group->get('/alerts', [\SubTracker\Controllers\DashboardController::class, 'alerts'])
             ->add($verifiedMiddleware)
             ->add($authMiddleware);
 

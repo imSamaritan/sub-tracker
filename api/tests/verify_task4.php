@@ -63,6 +63,7 @@ function makeRequest(\Slim\App $app, string $method, string $path, ?array $body 
 // 1. Test Registration Validation & Execution
 // ---------------------------------------------------------
 echo "--- 1. User Registration (POST /v1/auth/register) ---\n";
+$pdo->exec("TRUNCATE TABLE rate_limits");
 MailService::clearTestSpool();
 
 // A. Validation failure (short password, bad email)

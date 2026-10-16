@@ -101,8 +101,12 @@ class AuthMiddleware implements MiddlewareInterface
 
         $response = $handler->handle($request);
 
-        // Security requirement (§10): Cache-Control: no-store on authenticated responses
-        return $response->withHeader('Cache-Control', 'no-store, private');
+        // Security requirement (§10): Cache-Control: no-store on authenticated responses unless response explicitly sets it
+        if (!$response->hasHeader('Cache-Control')) {
+            $response = $response->withHeader('Cache-Control', 'no-store, private');
+        }
+
+        return $response;
     }
 
     private function createResponse(int $status): Response

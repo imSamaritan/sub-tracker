@@ -111,4 +111,32 @@ return [
             $c->get(\SubTracker\Repositories\ProfileRepository::class)
         );
     },
+
+    \SubTracker\Repositories\CategoryRepository::class => function (ContainerInterface $c): \SubTracker\Repositories\CategoryRepository {
+        return new \SubTracker\Repositories\CategoryRepository($c->get(PDO::class));
+    },
+
+    \SubTracker\Controllers\CategoryController::class => function (ContainerInterface $c): \SubTracker\Controllers\CategoryController {
+        return new \SubTracker\Controllers\CategoryController(
+            $c->get(\SubTracker\Repositories\CategoryRepository::class)
+        );
+    },
+
+    \SubTracker\Services\AlertService::class => function (ContainerInterface $c): \SubTracker\Services\AlertService {
+        return new \SubTracker\Services\AlertService($c->get(PDO::class));
+    },
+
+    \SubTracker\Services\BudgetService::class => function (ContainerInterface $c): \SubTracker\Services\BudgetService {
+        return new \SubTracker\Services\BudgetService(
+            $c->get(PDO::class),
+            $c->get(\SubTracker\Services\AlertService::class)
+        );
+    },
+
+    \SubTracker\Controllers\DashboardController::class => function (ContainerInterface $c): \SubTracker\Controllers\DashboardController {
+        return new \SubTracker\Controllers\DashboardController(
+            $c->get(\SubTracker\Services\BudgetService::class),
+            $c->get(\SubTracker\Services\AlertService::class)
+        );
+    },
 ];
