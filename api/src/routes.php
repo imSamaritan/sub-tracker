@@ -41,8 +41,29 @@ return function (App $app): void {
             ->add($authMiddleware);
     };
 
+    // Route handler for Subscriptions group
+    $registerSubRoutes = function (RouteCollectorProxy $group): void {
+        $group->get('', [\SubTracker\Controllers\SubscriptionController::class, 'list']);
+        $group->post('', [\SubTracker\Controllers\SubscriptionController::class, 'create']);
+        $group->post('/reset-paid', [\SubTracker\Controllers\SubscriptionController::class, 'resetPaid']);
+        $group->get('/{id:[0-9]+}', [\SubTracker\Controllers\SubscriptionController::class, 'get']);
+        $group->put('/{id:[0-9]+}', [\SubTracker\Controllers\SubscriptionController::class, 'update']);
+        $group->patch('/{id:[0-9]+}', [\SubTracker\Controllers\SubscriptionController::class, 'patch']);
+        $group->delete('/{id:[0-9]+}', [\SubTracker\Controllers\SubscriptionController::class, 'delete']);
+        $group->post('/{id:[0-9]+}/pause', [\SubTracker\Controllers\SubscriptionController::class, 'pause']);
+        $group->post('/{id:[0-9]+}/resume', [\SubTracker\Controllers\SubscriptionController::class, 'resume']);
+        $group->post('/{id:[0-9]+}/payment', [\SubTracker\Controllers\SubscriptionController::class, 'markPaid']);
+        $group->delete('/{id:[0-9]+}/payment', [\SubTracker\Controllers\SubscriptionController::class, 'unmarkPaid']);
+        $group->post('/{id:[0-9]+}/renew', [\SubTracker\Controllers\SubscriptionController::class, 'renew']);
+    };
+
     // Root-level health check
     $app->get('/health', HealthController::class);
+
+    // State route (root)
+    $app->get('/state', [\SubTracker\Controllers\StateController::class, 'state'])
+        ->add($verifiedMiddleware)
+        ->add($authMiddleware);
 
     // Profile routes (at root level for convenience)
     $app->get('/profile', [\SubTracker\Controllers\ProfileController::class, 'get'])
@@ -63,13 +84,23 @@ return function (App $app): void {
         ->add($verifiedMiddleware)
         ->add($authMiddleware);
 
+    // Subscriptions routes (at root level for convenience)
+    $app->group('/subscriptions', $registerSubRoutes)
+        ->add($verifiedMiddleware)
+        ->add($authMiddleware);
+
     // Mount Auth directly on /auth for convenience
     $app->group('/auth', $registerAuthRoutes);
 
     // API version 1 route group
-    $app->group('/v1', function (RouteCollectorProxy $group) use ($registerAuthRoutes, $authMiddleware, $verifiedMiddleware): void {
+    $app->group('/v1', function (RouteCollectorProxy $group) use ($registerAuthRoutes, $registerSubRoutes, $authMiddleware, $verifiedMiddleware): void {
         $group->get('/health', HealthController::class);
         $group->group('/auth', $registerAuthRoutes);
+
+        // State route in /v1
+        $group->get('/state', [\SubTracker\Controllers\StateController::class, 'state'])
+            ->add($verifiedMiddleware)
+            ->add($authMiddleware);
 
         // Profile routes in /v1
         $group->get('/profile', [\SubTracker\Controllers\ProfileController::class, 'get'])
@@ -87,6 +118,11 @@ return function (App $app): void {
             ->add($verifiedMiddleware)
             ->add($authMiddleware);
         $group->get('/alerts', [\SubTracker\Controllers\DashboardController::class, 'alerts'])
+            ->add($verifiedMiddleware)
+            ->add($authMiddleware);
+
+        // Subscriptions routes in /v1
+        $group->group('/subscriptions', $registerSubRoutes)
             ->add($verifiedMiddleware)
             ->add($authMiddleware);
 
