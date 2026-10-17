@@ -21,9 +21,12 @@ class App
     {
         $baseDir = $baseDir ?? dirname(__DIR__);
 
-        // 1. Ensure environment variables are loaded
+        // 1. Ensure environment variables are loaded (supports api/.env locally and /home/<user>/.env on cPanel)
         if (file_exists($baseDir . '/.env')) {
             $dotenv = Dotenv::createImmutable($baseDir);
+            $dotenv->safeLoad();
+        } elseif (file_exists(dirname($baseDir) . '/.env')) {
+            $dotenv = Dotenv::createImmutable(dirname($baseDir));
             $dotenv->safeLoad();
         }
 
@@ -60,14 +63,14 @@ class App
         // Inner: parses JSON request bodies and rejects malformed JSON with 400
         $app->add($container->get(\SubTracker\Middleware\JsonBodyParserMiddleware::class));
 
-        // Method override (X-HTTP-Method-Override for PUT/PATCH/DELETE under WAF)
+        // Routing middleware
+        $app->addRoutingMiddleware();
+
+        // Method override (X-HTTP-Method-Override for PUT/PATCH/DELETE under WAF) — runs before routing in LIFO order
         $app->add(new MethodOverrideMiddleware());
 
         // LiteSpeed / Apache FastCGI authorization header normalization
         $app->add($container->get(\SubTracker\Middleware\LiteSpeedAuthMiddleware::class));
-
-        // Routing middleware
-        $app->addRoutingMiddleware();
 
         // Outermost: Catch all exceptions and return standardized JSON error envelopes
         $debug = filter_var($_ENV['APP_DEBUG'] ?? false, FILTER_VALIDATE_BOOLEAN);

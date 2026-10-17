@@ -1183,42 +1183,42 @@ Not the backend developer's job, but useful to agree on:
 ## 14. Acceptance checklist
 
 **Setup & Environment**
-- [ ] Schema `001` through `013` runs cleanly on MariaDB/MySQL.
-- [ ] `.env.example` committed; `.env` and `vendor/` ignored.
-- [ ] Slim app bootstrap runs behind LiteSpeed/.htaccess with `Authorization` header preserved.
+- [x] Schema `001` through `013` runs cleanly on MariaDB/MySQL.
+- [x] `.env.example` committed; `.env` and `vendor/` ignored.
+- [x] Slim app bootstrap runs behind LiteSpeed/.htaccess with `Authorization` header preserved.
 
 **Auth & Email Verification**
-- [ ] Register creates `users` (`email_verified_at = NULL`), default profile, and verification token.
-- [ ] Verification email dispatched via SMTP with valid one-time link.
-- [ ] Unverified user login attempt returns `403 EMAIL_NOT_VERIFIED`.
-- [ ] Submitting valid token to `POST /auth/verify-email` sets `email_verified_at` and returns active session token.
-- [ ] Wrong password → `401 INVALID_CREDENTIALS` (rate limit triggers after 5 failed attempts).
-- [ ] Logout revokes the token. Reusing it → 401.
-- [ ] Password reset token works once, expires after 60 min, and revokes all active device tokens.
-- [ ] Account deletion (`DELETE /auth/account`) removes user and cascades to all related rows.
+- [x] Register creates `users` (`email_verified_at = NULL`), default profile, and verification token.
+- [x] Verification email dispatched via SMTP with valid one-time link.
+- [x] Unverified user login attempt returns `403 EMAIL_NOT_VERIFIED`.
+- [x] Submitting valid token to `POST /auth/verify-email` sets `email_verified_at` and returns active session token.
+- [x] Wrong password → `401 INVALID_CREDENTIALS` (rate limit triggers after 5 failed attempts).
+- [x] Logout revokes the token. Reusing it → 401.
+- [x] Password reset token works once, expires after 60 min, and revokes all active device tokens.
+- [x] Account deletion (`DELETE /auth/account`) removes user and cascades to all related rows.
 
 **Subscriptions & Money**
-- [ ] CRUD round-trips every field. Soft-deleted subs disappear from lists but payments remain.
-- [ ] Mark Paid twice → only **one** payment row. Un-mark removes that cycle's latest payment.
-- [ ] Renew: monthly 2026-01-31 → 2026-02-28 → 2026-03-31. Yearly 2028-02-29 → 2029-02-28. Weekly +7 days.
-- [ ] Reset-paid sets flag to 0 for all live subs without deleting payment history.
-- [ ] `POST /account/reset-demo` cleanly resets user to the 5 demo subscriptions and matching budget totals.
-- [ ] `/dashboard/summary` matches frontend formulas identically.
-- [ ] Filter `urgent` includes overdue unpaid subs and excludes paid ones.
+- [x] CRUD round-trips every field. Soft-deleted subs disappear from lists but payments remain.
+- [x] Mark Paid twice → only **one** payment row. Un-mark removes that cycle's latest payment.
+- [x] Renew: monthly 2026-01-31 → 2026-02-28 → 2026-03-31. Yearly 2028-02-29 → 2029-02-28. Weekly +7 days.
+- [x] Reset-paid sets flag to 0 for all live subs without deleting payment history.
+- [x] `POST /account/reset-demo` cleanly resets user to the 5 demo subscriptions and matching budget totals.
+- [x] `/dashboard/summary` matches frontend formulas identically.
+- [x] Filter `urgent` includes overdue unpaid subs and excludes paid ones.
 
 **Isolation & Security**
-- [ ] User B gets 404 on GET/PUT/DELETE/pay/renew for user A's subscription IDs.
-- [ ] No endpoint leaks `password_hash`, `token_hash` or `deleted_at`.
-- [ ] Rate limits enforce throttles via `rate_limits` table without memory cache dependencies.
+- [x] User B gets 404 on GET/PUT/DELETE/pay/renew for user A's subscription IDs.
+- [x] No endpoint leaks `password_hash`, `token_hash` or `deleted_at`.
+- [x] Rate limits enforce throttles via `rate_limits` table without memory cache dependencies.
 
 **Backup & Migration**
-- [ ] Current app's localStorage export imports cleanly via `POST /backup`.
-- [ ] Exported backup JSON from API can be re-imported with 100% fidelity.
+- [x] Current app's localStorage export imports cleanly via `POST /backup`.
+- [x] Exported backup JSON from API can be re-imported with 100% fidelity.
 
 **Notifications & Cron**
-- [ ] Running `send-reminders.php` twice on the same day sends each reminder only once.
-- [ ] 410 from push service deletes the device row in `push_subscriptions`.
-- [ ] Reminder dates use the user's local timezone (tested for SAST).
+- [x] Running `send-reminders.php` twice on the same day sends each reminder only once.
+- [x] 410 from push service deletes the device row in `push_subscriptions`.
+- [x] Reminder dates use the user's local timezone (tested for SAST).
 
 ---
 

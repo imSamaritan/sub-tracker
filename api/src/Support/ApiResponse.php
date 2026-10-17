@@ -68,6 +68,7 @@ class ApiResponse
         $response->getBody()->write((string) json_encode($data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
         return $response
             ->withStatus($status)
-            ->withHeader('Content-Type', 'application/json; charset=utf-8');
+            ->withHeader('Content-Type', 'application/json; charset=utf-8')
+            ->withHeader('X-Content-Type-Options', 'nosniff');
     }
 }
