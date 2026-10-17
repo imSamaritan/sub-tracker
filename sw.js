@@ -3,7 +3,7 @@
  * Caches core app shell, local CSS/JS, and CDN assets for offline use
  */
 
-const CACHE_NAME = 'subtracker-cache-v12';
+const CACHE_NAME = 'subtracker-cache-v13';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -74,6 +74,7 @@ self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
   const url = new URL(event.request.url);
+  if (url.pathname.includes('/api/')) return; // never cache API responses
 
   // If local origin (HTML, JS, CSS), use Network-First so updates take effect immediately
   if (url.origin === location.origin) {
@@ -116,18 +117,60 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
+// Web Push event handler (§9)
+self.addEventListener('push', (event) => {
+  let data = {
+    title: 'SubTracker Reminder',
+    body: 'You have upcoming subscription bills due soon.',
+    url: './index.html#calendar',
+    tag: 'subtracker-alert'
+  };
+
+  if (event.data) {
+    try {
+      const parsed = event.data.json();
+      if (parsed && typeof parsed === 'object') {
+        data = { ...data, ...parsed };
+      }
+    } catch (e) {
+      const text = event.data.text();
+      if (text) data.body = text;
+    }
+  }
+
+  const options = {
+    body: data.body,
+    icon: 'assets/icons/icon-192.svg',
+    badge: 'assets/icons/icon-192.svg',
+    vibrate: [200, 100, 200],
+    tag: data.tag || 'subtracker-alert',
+    renotify: true,
+    data: {
+      url: data.url || './index.html#calendar'
+    }
+  };
+
+  event.waitUntil(
+    self.registration.showNotification(data.title, options)
+  );
+});
+
 // Notification click handler
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
+  const targetUrl = (event.notification.data && event.notification.data.url)
+    ? event.notification.data.url
+    : './index.html';
+
   event.waitUntil(
-    clients.matchAll({ type: 'window' }).then((clientList) => {
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
       for (const client of clientList) {
         if (client.url.includes('index.html') && 'focus' in client) {
           return client.focus();
         }
       }
       if (clients.openWindow) {
-        return clients.openWindow('./index.html');
+        return clients.openWindow(targetUrl);
       }
     })
   );

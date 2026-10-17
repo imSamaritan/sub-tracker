@@ -37,18 +37,23 @@ const SubUtils = {
   },
 
   /**
+   * Optional server-computed user-local "today" (YYYY-MM-DD) from GET /state (§8.2, §11)
+   */
+  serverToday: null,
+
+  /**
    * Calculate difference in days between today and the due date
    */
   getDaysUntil(dateString) {
     if (!dateString) return 999;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const todayStr = this.getTodayISO();
+    const today = new Date(todayStr + 'T00:00:00');
 
     const due = new Date(dateString + 'T00:00:00');
     if (isNaN(due.getTime())) return 999;
 
     const diffTime = due.getTime() - today.getTime();
-    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return Math.round(diffTime / (1000 * 60 * 60 * 24));
   },
 
   /**
@@ -112,19 +117,39 @@ const SubUtils = {
   },
 
   /**
-   * Advance a date to the next cycle (monthly, yearly, weekly)
+   * Format a Date object as local YYYY-MM-DD without UTC offset shift (§11)
    */
-  advanceDueDate(dateString, cycle = 'monthly') {
-    const d = new Date((dateString || new Date().toISOString().slice(0, 10)) + 'T00:00:00');
-    if (cycle === 'weekly') {
-      d.setDate(d.getDate() + 7);
-    } else if (cycle === 'yearly') {
-      d.setFullYear(d.getFullYear() + 1);
-    } else {
-      // Default: monthly
-      d.setMonth(d.getMonth() + 1);
+  formatLocalISO(dateObj) {
+    const y = dateObj.getFullYear();
+    const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const d = String(dateObj.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  },
+
+  /**
+   * Advance a date to the next cycle (monthly, yearly, weekly) with month-end clamping (§6.4)
+   */
+  advanceDueDate(dateString, cycle = 'monthly', billingDay = null) {
+    const baseStr = dateString || this.getTodayISO();
+    const parts = baseStr.split('-').map(Number);
+    if (parts.length !== 3 || parts.some(isNaN)) {
+      return this.getTodayISO();
     }
-    return d.toISOString().slice(0, 10);
+
+    const [year, month, day] = parts;
+    if (cycle === 'weekly') {
+      const d = new Date(year, month - 1, day + 7);
+      return this.formatLocalISO(d);
+    }
+
+    const anchor = billingDay || day;
+    const targetYear = cycle === 'yearly' ? year + 1 : year;
+    const targetMonthIndex = cycle === 'yearly' ? month - 1 : month; // 0-indexed next month
+    const firstOfTarget = new Date(targetYear, targetMonthIndex, 1);
+    const daysInTargetMonth = new Date(firstOfTarget.getFullYear(), firstOfTarget.getMonth() + 1, 0).getDate();
+    const clampedDay = Math.min(anchor, daysInTargetMonth);
+
+    return this.formatLocalISO(new Date(firstOfTarget.getFullYear(), firstOfTarget.getMonth(), clampedDay));
   },
 
   /**
@@ -135,10 +160,25 @@ const SubUtils = {
   },
 
   /**
-   * Return today's ISO date string (YYYY-MM-DD)
+   * Return today's ISO date string (YYYY-MM-DD) using serverToday if available, or local date (§11)
    */
   getTodayISO() {
-    return new Date().toISOString().slice(0, 10);
+    if (this.serverToday) return this.serverToday;
+    return this.formatLocalISO(new Date());
+  },
+
+  /**
+   * Convert URL-safe base64 VAPID public key to Uint8Array for PushManager.subscribe()
+   */
+  urlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; ++i) {
+      outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
   }
 };
 

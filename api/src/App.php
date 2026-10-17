@@ -40,9 +40,20 @@ class App
         $app = AppFactory::create();
 
         // 5. Configure URL base path (e.g. /projects/sub-tracker/api/public or /api)
-        $basePath = $_ENV['APP_BASE_PATH'] ?? '';
-        if (!empty($basePath)) {
-            $app->setBasePath(rtrim($basePath, '/'));
+        $basePath = rtrim((string) ($_ENV['APP_BASE_PATH'] ?? ''), '/');
+        if ($basePath !== '') {
+            $requestUri = $_SERVER['REQUEST_URI'] ?? '';
+            $altBasePath = (string) preg_replace('#/public$#', '', $basePath);
+            if (
+                $requestUri !== ''
+                && !str_starts_with($requestUri, $basePath)
+                && $altBasePath !== ''
+                && str_starts_with($requestUri, $altBasePath)
+            ) {
+                $app->setBasePath($altBasePath);
+            } else {
+                $app->setBasePath($basePath);
+            }
         }
 
         // 6. Register middleware pipeline (Slim runs middleware in LIFO order)

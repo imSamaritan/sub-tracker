@@ -154,6 +154,60 @@ const SubNotifier = {
       }
       localStorage.setItem('subtracker_last_system_notify_date', todayStr);
     }
+  },
+
+  /**
+   * Subscribe browser PushManager using server VAPID public key (§8.9)
+   */
+  async subscribeToPush(vapidPublicKey) {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window) || !vapidPublicKey) {
+      return null;
+    }
+
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      if (!registration || !registration.pushManager) return null;
+
+      let subscription = await registration.pushManager.getSubscription();
+      if (!subscription) {
+        const applicationServerKey = SubUtils.urlBase64ToUint8Array(vapidPublicKey);
+        subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey
+        });
+      }
+
+      const json = subscription.toJSON();
+      const supportedEncodings = (window.PushManager && Array.isArray(PushManager.supportedContentEncodings))
+        ? PushManager.supportedContentEncodings
+        : ['aes128gcm'];
+
+      return {
+        endpoint: json.endpoint,
+        keys: json.keys || {},
+        contentEncoding: supportedEncodings[0] || 'aes128gcm'
+      };
+    } catch (err) {
+      console.warn('Web Push subscription skipped or failed:', err);
+      return null;
+    }
+  },
+
+  /**
+   * Get active Web Push subscription endpoint if any (used on logout §8.1)
+   */
+  async getPushEndpoint() {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      return null;
+    }
+    try {
+      const registration = await navigator.serviceWorker.getRegistration();
+      if (!registration || !registration.pushManager) return null;
+      const sub = await registration.pushManager.getSubscription();
+      return sub ? sub.endpoint : null;
+    } catch (e) {
+      return null;
+    }
   }
 };
 
