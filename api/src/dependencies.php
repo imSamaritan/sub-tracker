@@ -22,6 +22,15 @@ return [
         'password_reset_ttl_minutes' => (int) ($_ENV['PASSWORD_RESET_TTL_MINUTES'] ?? 60),
         'email_verify_ttl_hours' => (int) ($_ENV['EMAIL_VERIFY_TTL_HOURS'] ?? 24),
         'unverified_account_ttl_days' => (int) ($_ENV['UNVERIFIED_ACCOUNT_TTL_DAYS'] ?? 7),
+        'vapid' => [
+            'subject' => $_ENV['VAPID_SUBJECT'] ?? 'mailto:admin@subtracker.local',
+            'public_key' => !empty($_ENV['VAPID_PUBLIC_KEY'])
+                ? $_ENV['VAPID_PUBLIC_KEY']
+                : 'BFdJMIaQ0LzJG8dSIgrI3phg0ZxnhqVtJMXVnZfuxY2eBWbnlLuU_zTXljgk-eIfdM3FWl3KRTZa7BOZ1W-OTJg',
+            'private_key' => !empty($_ENV['VAPID_PRIVATE_KEY'])
+                ? $_ENV['VAPID_PRIVATE_KEY']
+                : '8a8ILkCTzOfkhOEPCqLRyXZsjcWgFniOGl1aYIzriS0',
+        ],
         'mail' => [
             'host' => $_ENV['MAIL_HOST'] ?? '',
             'port' => (int) ($_ENV['MAIL_PORT'] ?? 465),
@@ -184,6 +193,33 @@ return [
         return new \SubTracker\Controllers\BackupController(
             $c->get(\SubTracker\Services\BackupService::class),
             $c->get(\SubTracker\Repositories\SubscriptionRepository::class)
+        );
+    },
+
+    \SubTracker\Repositories\PushSubscriptionRepository::class => function (ContainerInterface $c): \SubTracker\Repositories\PushSubscriptionRepository {
+        return new \SubTracker\Repositories\PushSubscriptionRepository($c->get(PDO::class));
+    },
+
+    \SubTracker\Services\PushService::class => function (ContainerInterface $c): \SubTracker\Services\PushService {
+        return new \SubTracker\Services\PushService(
+            $c->get(PDO::class),
+            $c->get(\SubTracker\Repositories\PushSubscriptionRepository::class),
+            $c->get(\SubTracker\Services\RateLimiter::class),
+            $c->get('settings')
+        );
+    },
+
+    \SubTracker\Services\CleanupService::class => function (ContainerInterface $c): \SubTracker\Services\CleanupService {
+        return new \SubTracker\Services\CleanupService(
+            $c->get(PDO::class),
+            $c->get(\SubTracker\Services\RateLimiter::class),
+            $c->get('settings')
+        );
+    },
+
+    \SubTracker\Controllers\PushController::class => function (ContainerInterface $c): \SubTracker\Controllers\PushController {
+        return new \SubTracker\Controllers\PushController(
+            $c->get(\SubTracker\Services\PushService::class)
         );
     },
 ];

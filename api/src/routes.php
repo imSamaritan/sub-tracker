@@ -94,6 +94,25 @@ return function (App $app): void {
         ->add($verifiedMiddleware)
         ->add($authMiddleware);
 
+    // Route handler for Push group (§8.9)
+    $registerPushRoutes = function (RouteCollectorProxy $group) use ($authMiddleware, $verifiedMiddleware): void {
+        // Public endpoint: VAPID public key
+        $group->get('/vapid-public-key', [\SubTracker\Controllers\PushController::class, 'vapidPublicKey']);
+
+        // Authenticated + Verified Email endpoints
+        $group->post('/subscriptions', [\SubTracker\Controllers\PushController::class, 'subscribe'])
+            ->add($verifiedMiddleware)
+            ->add($authMiddleware);
+
+        $group->delete('/subscriptions', [\SubTracker\Controllers\PushController::class, 'unsubscribe'])
+            ->add($verifiedMiddleware)
+            ->add($authMiddleware);
+
+        $group->post('/test', [\SubTracker\Controllers\PushController::class, 'test'])
+            ->add($verifiedMiddleware)
+            ->add($authMiddleware);
+    };
+
     // Backup & Demo Reset routes (at root level for convenience)
     $app->get('/backup', [\SubTracker\Controllers\BackupController::class, 'export'])
         ->add($verifiedMiddleware)
@@ -105,11 +124,14 @@ return function (App $app): void {
         ->add($verifiedMiddleware)
         ->add($authMiddleware);
 
+    // Mount Push directly on /push for convenience
+    $app->group('/push', $registerPushRoutes);
+
     // Mount Auth directly on /auth for convenience
     $app->group('/auth', $registerAuthRoutes);
 
     // API version 1 route group
-    $app->group('/v1', function (RouteCollectorProxy $group) use ($registerAuthRoutes, $registerSubRoutes, $authMiddleware, $verifiedMiddleware): void {
+    $app->group('/v1', function (RouteCollectorProxy $group) use ($registerAuthRoutes, $registerSubRoutes, $registerPushRoutes, $authMiddleware, $verifiedMiddleware): void {
         $group->get('/health', HealthController::class);
         $group->group('/auth', $registerAuthRoutes);
 
@@ -157,6 +179,9 @@ return function (App $app): void {
         $group->post('/account/reset-demo', [\SubTracker\Controllers\BackupController::class, 'resetDemo'])
             ->add($verifiedMiddleware)
             ->add($authMiddleware);
+
+        // Push routes in /v1
+        $group->group('/push', $registerPushRoutes);
 
         // Debug route to test JSON body parsing and method override in development
         if (filter_var($_ENV['APP_DEBUG'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
