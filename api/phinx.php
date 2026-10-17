@@ -3,8 +3,17 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/vendor/autoload.php';
 
-$dotenv = Dotenv\Dotenv::createImmutable(__DIR__);
-$dotenv->safeLoad();
+$envDir = file_exists(__DIR__ . '/.env')
+    ? __DIR__
+    : (file_exists(dirname(__DIR__) . '/.env') ? dirname(__DIR__) : __DIR__);
+
+if (file_exists($envDir . '/.env')) {
+    $dotenv = Dotenv\Dotenv::createImmutable($envDir);
+    $dotenv->safeLoad();
+}
+
+$env = static fn(string $key, string $default = ''): string =>
+    (string) ($_ENV[$key] ?? $_SERVER[$key] ?? getenv($key) ?: $default);
 
 return [
     'paths' => [
@@ -13,24 +22,24 @@ return [
     ],
     'environments' => [
         'default_migration_table' => 'phinxlog',
-        'default_environment' => (($_ENV['APP_ENV'] ?? 'local') === 'production') ? 'production' : 'development',
+        'default_environment' => ($env('APP_ENV', 'local') === 'production') ? 'production' : 'development',
         'development' => [
             'adapter' => 'mysql',
-            'host' => $_ENV['DB_HOST'] ?? '127.0.0.1',
-            'name' => $_ENV['DB_NAME'] ?? 'subtracker',
-            'user' => $_ENV['DB_USER'] ?? 'root',
-            'pass' => $_ENV['DB_PASS'] ?? '',
-            'port' => (int)($_ENV['DB_PORT'] ?? 3306),
+            'host' => $env('DB_HOST', '127.0.0.1'),
+            'name' => $env('DB_NAME', 'subtracker'),
+            'user' => $env('DB_USER', 'root'),
+            'pass' => $env('DB_PASS', ''),
+            'port' => (int) $env('DB_PORT', '3306'),
             'charset' => 'utf8mb4',
             'collation' => 'utf8mb4_unicode_ci',
         ],
         'production' => [
             'adapter' => 'mysql',
-            'host' => $_ENV['DB_HOST'] ?? 'localhost',
-            'name' => $_ENV['DB_NAME'] ?? '',
-            'user' => $_ENV['DB_USER'] ?? '',
-            'pass' => $_ENV['DB_PASS'] ?? '',
-            'port' => (int)($_ENV['DB_PORT'] ?? 3306),
+            'host' => $env('DB_HOST', 'localhost'),
+            'name' => $env('DB_NAME', 'subtracker'),
+            'user' => $env('DB_USER', 'root'),
+            'pass' => $env('DB_PASS', ''),
+            'port' => (int) $env('DB_PORT', '3306'),
             'charset' => 'utf8mb4',
             'collation' => 'utf8mb4_unicode_ci',
         ],

@@ -68,9 +68,30 @@ SubTracker is a sleek, Progressive Web App (PWA) designed to track recurring sub
 
 ---
 
+## 🚢 Production Deployment (Absolute Hosting cPanel)
+
+1. **Build the cPanel release bundle**:
+   ```bash
+   php api/bin/build-production.php
+   ```
+   Generates `dist/cpanel-release/` (`sub-tracker-backend/` placed above `public_html/`, `public_html/` web root, `.env.production.example`, and `cpanel-database-install.sql`) plus `dist/subtracker-cpanel-release.zip`.
+2. **Run Phinx database migrations & category seeds**:
+   ```bash
+   php api/vendor/bin/phinx migrate -e production -c api/phinx.php
+   php api/vendor/bin/phinx seed:run -e production -s CategorySeeder -c api/phinx.php
+   ```
+3. **Verify SMTP & Scheduled Cron Jobs**:
+   ```bash
+   php api/bin/verify-smtp.php
+   php api/bin/send-reminders.php
+   php api/bin/cleanup.php
+   ```
+
+---
+
 ## 🔮 Roadmap
-- [ ] Connect `StorageRepository` to a PHP REST API.
-- [ ] Implement MySQL database backend with user authentication.
+- [x] Connect `StorageRepository` to a PHP 8.2+ Slim 4 REST API.
+- [x] Implement MySQL / MariaDB database backend with Phinx migrations, email verification, Web Push reminders, and user authentication.
 
 ---
 

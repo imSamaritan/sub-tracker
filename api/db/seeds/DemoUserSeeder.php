@@ -12,6 +12,16 @@ final class DemoUserSeeder extends AbstractSeed
 
     public function run(): void
     {
+        $envName = method_exists($this, 'getEnvironment') ? (string) $this->getEnvironment() : '';
+        $appEnv = (string) ($_ENV['APP_ENV'] ?? $_SERVER['APP_ENV'] ?? getenv('APP_ENV') ?: '');
+
+        if ($envName === 'production' || $appEnv === 'production') {
+            if ($this->getOutput()) {
+                $this->getOutput()->writeln('<comment>Skipping DemoUserSeeder in production environment (§5 / §15.3).</comment>');
+            }
+            return;
+        }
+
         $conn = $this->getAdapter()->getConnection();
 
         // 1. Check or insert demo user

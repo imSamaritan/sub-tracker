@@ -11,6 +11,7 @@ Thumbs.db
 *.backup
 *.tmp
 
-# Backend
+# Backend & Build Artifacts
 api/vendor/
 api/.env
+dist/
