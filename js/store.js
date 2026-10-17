@@ -1,7 +1,6 @@
 /**
  * SubTracker Store & Data Layer
- * Powered by Alpine.js store and LocalStorage Mock DB
- * Designed for easy migration to PHP / MySQL
+ * Powered by Alpine.js store, PHP/MySQL REST API (/api/v1), and LocalStorage Offline Cache
  */
 
 // Preset subscriptions popular in South Africa
@@ -36,6 +35,12 @@ const SA_PRESETS = [
   { name: 'Sanlam insurance', category: 'Insurance', amount: 330, cycle: 'monthly', icon: 'fa-shield-halved', color: '#0075c9', notes: 'Sanlam insurance cover' }
 ];
 
+function getRelativeLocalISO(offsetDays = 0) {
+  const d = new Date();
+  d.setDate(d.getDate() + offsetDays);
+  return SubUtils.formatLocalISO(d);
+}
+
 const DEFAULT_SAMPLE_DATA = {
   profile: {
     monthlySalary: 28500.00,
@@ -43,7 +48,8 @@ const DEFAULT_SAMPLE_DATA = {
     currency: 'ZAR',
     currencySymbol: 'R',
     systemNotificationsEnabled: false,
-    theme: 'dark'
+    theme: 'dark',
+    timezone: 'Africa/Johannesburg'
   },
   subscriptions: [
     {
@@ -52,7 +58,7 @@ const DEFAULT_SAMPLE_DATA = {
       category: 'Entertainment',
       amount: 99.00,
       billingCycle: 'monthly',
-      dueDate: new Date(new Date().setDate(new Date().getDate() + 2)).toISOString().slice(0, 10), // Due in 2 days
+      dueDate: getRelativeLocalISO(2),
       startDate: '2026-01-01',
       icon: 'fa-tv',
       color: '#0084f7',
@@ -65,7 +71,7 @@ const DEFAULT_SAMPLE_DATA = {
       category: 'Entertainment',
       amount: 799.00,
       billingCycle: 'monthly',
-      dueDate: new Date(new Date().setDate(new Date().getDate() + 5)).toISOString().slice(0, 10), // Due in 5 days
+      dueDate: getRelativeLocalISO(5),
       startDate: '2026-02-15',
       icon: 'fa-satellite-dish',
       color: '#005ea6',
@@ -78,7 +84,7 @@ const DEFAULT_SAMPLE_DATA = {
       category: 'Internet',
       amount: 849.00,
       billingCycle: 'monthly',
-      dueDate: new Date(new Date().setDate(new Date().getDate() + 18)).toISOString().slice(0, 10),
+      dueDate: getRelativeLocalISO(18),
       startDate: '2025-11-01',
       icon: 'fa-wifi',
       color: '#e60000',
@@ -91,7 +97,7 @@ const DEFAULT_SAMPLE_DATA = {
       category: 'Music',
       amount: 64.99,
       billingCycle: 'monthly',
-      dueDate: new Date(new Date().setDate(new Date().getDate() - 1)).toISOString().slice(0, 10), // 1 day ago / paid
+      dueDate: getRelativeLocalISO(-1),
       startDate: '2025-06-10',
       icon: 'fa-music',
       color: '#1db954',
@@ -104,7 +110,7 @@ const DEFAULT_SAMPLE_DATA = {
       category: 'Fitness',
       amount: 450.00,
       billingCycle: 'monthly',
-      dueDate: new Date(new Date().setDate(new Date().getDate() + 1)).toISOString().slice(0, 10), // Due tomorrow
+      dueDate: getRelativeLocalISO(1),
       startDate: '2026-01-05',
       icon: 'fa-dumbbell',
       color: '#e11d48',
@@ -118,17 +124,143 @@ const DEFAULT_SAMPLE_DATA = {
       subscriptionId: 'sub_demo_4',
       name: 'Spotify Premium',
       amount: 64.99,
-      paidDate: new Date().toISOString().slice(0, 10)
+      paidDate: getRelativeLocalISO(0)
     }
   ]
 };
 
 /**
- * Storage Repository Layer
- * Modular interface designed so that switching to PHP/MySQL later is a 1-to-1 swap
+ * REST API Client & Storage Repository Layer (§8, §12)
+ * Handles Bearer token authentication, API calls, and offline cache fallback.
  */
 const StorageRepository = {
   STORAGE_KEY: 'subtracker_zar_database',
+  TOKEN_KEY: 'subtracker_token',
+  USER_KEY: 'subtracker_user',
+
+  get BaseUrl() {
+    if (window.SUBTRACKER_API_BASE) {
+      return window.SUBTRACKER_API_BASE.replace(/\/+$/, '');
+    }
+    return './api/v1';
+  },
+
+  getToken() {
+    try {
+      return localStorage.getItem(this.TOKEN_KEY) || null;
+    } catch (e) {
+      return null;
+    }
+  },
+
+  setToken(token) {
+    try {
+      if (token) {
+        localStorage.setItem(this.TOKEN_KEY, token);
+      } else {
+        localStorage.removeItem(this.TOKEN_KEY);
+      }
+    } catch (e) {}
+  },
+
+  getUser() {
+    try {
+      const raw = localStorage.getItem(this.USER_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) {
+      return null;
+    }
+  },
+
+  setUser(user) {
+    try {
+      if (user) {
+        localStorage.setItem(this.USER_KEY, JSON.stringify(user));
+      } else {
+        localStorage.removeItem(this.USER_KEY);
+      }
+    } catch (e) {}
+  },
+
+  clearSession() {
+    this.setToken(null);
+    this.setUser(null);
+  },
+
+  getDeviceName() {
+    const ua = navigator.userAgent || 'Browser';
+    if (/Android/i.test(ua)) return 'Android Browser';
+    if (/iPhone|iPad|iPod/i.test(ua)) return 'iOS Safari';
+    if (/Windows/i.test(ua)) return 'Browser on Windows';
+    if (/Mac/i.test(ua)) return 'Browser on Mac';
+    if (/Linux/i.test(ua)) return 'Browser on Linux';
+    return 'Web Browser';
+  },
+
+  /**
+   * Perform an HTTP request against the SubTracker REST API
+   */
+  async request(method, path, body = null, options = {}) {
+    const cleanPath = path.startsWith('/') ? path : `/${path}`;
+    const url = `${this.BaseUrl}${cleanPath}`;
+    const token = this.getToken();
+
+    const headers = {
+      'Accept': 'application/json',
+      ...(options.headers || {})
+    };
+
+    if (token && options.auth !== false) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const fetchOptions = {
+      method: method.toUpperCase(),
+      headers,
+      cache: 'no-store'
+    };
+
+    if (body !== null && method.toUpperCase() !== 'GET') {
+      headers['Content-Type'] = 'application/json; charset=utf-8';
+      fetchOptions.body = JSON.stringify(body);
+    }
+
+    const response = await fetch(url, fetchOptions);
+
+    if (response.status === 204) {
+      return { status: 204, data: null };
+    }
+
+    let payload = null;
+    const text = await response.text();
+    if (text) {
+      try {
+        payload = JSON.parse(text);
+      } catch (e) {
+        payload = null;
+      }
+    }
+
+    if (!response.ok) {
+      const errObj = (payload && payload.error) ? payload.error : {
+        code: `HTTP_${response.status}`,
+        message: `Request failed with status ${response.status}`
+      };
+
+      const error = new Error(errObj.message || 'API request failed');
+      error.status = response.status;
+      error.code = errObj.code || `HTTP_${response.status}`;
+      error.fields = errObj.fields || null;
+      error.retryAfter = response.headers.get('Retry-After');
+      throw error;
+    }
+
+    return {
+      status: response.status,
+      data: payload && payload.data !== undefined ? payload.data : payload,
+      meta: payload && payload.meta ? payload.meta : null
+    };
+  },
 
   load() {
     try {
@@ -194,6 +326,28 @@ document.addEventListener('alpine:init', () => {
     canInstallPwa: !!window.deferredInstallPrompt,
     isInstallModalOpen: false,
     isAppInstalled: !!window.isSubTrackerInstalled,
+
+    // Auth & Account State (§8.1, §12.2)
+    isAuthenticated: !!StorageRepository.getToken(),
+    user: StorageRepository.getUser(),
+    isLoading: false,
+    isAuthSubmitting: false,
+    isAuthModalOpen: false,
+    authMode: 'login', // 'login' | 'register' | 'verify-notice' | 'forgot-password' | 'reset-password' | 'change-password' | 'delete-account'
+    unverifiedEmail: '',
+    authError: '',
+    authSuccess: '',
+    authForm: {
+      email: '',
+      password: '',
+      displayName: '',
+      currentPassword: '',
+      newPassword: '',
+      verifyToken: '',
+      resetToken: '',
+      deletePassword: ''
+    },
+
     // Database State
     profile: {
       monthlySalary: 28500.00,
@@ -201,11 +355,28 @@ document.addEventListener('alpine:init', () => {
       currency: 'ZAR',
       currencySymbol: 'R',
       systemNotificationsEnabled: false,
-      theme: 'dark'
+      theme: 'dark',
+      timezone: 'Africa/Johannesburg'
     },
     theme: 'dark', // 'dark' | 'light'
     subscriptions: [],
     paymentHistory: [],
+    categories: [
+      { code: 'Entertainment', label: 'Entertainment' },
+      { code: 'Music', label: 'Music' },
+      { code: 'Internet', label: 'Internet / Fibre' },
+      { code: 'Telco', label: 'Telco / Airtime / Mobile' },
+      { code: 'Fitness', label: 'Fitness / Gym' },
+      { code: 'Health', label: 'Health / Medical' },
+      { code: 'Cloud', label: 'Cloud / Storage / Hosting' },
+      { code: 'Software', label: 'Software / Tools' },
+      { code: 'Insurance', label: 'Insurance' },
+      { code: 'Housing', label: 'Housing / Rent' },
+      { code: 'Food', label: 'Groceries / Food' },
+      { code: 'Family', label: 'Family Support' },
+      { code: 'Savings', label: 'Savings / Investments' },
+      { code: 'Other', label: 'Other' }
+    ],
 
     // UI View State
     activeTab: 'dashboard', // 'dashboard', 'subscriptions', 'calendar', 'settings', 'info'
@@ -246,37 +417,510 @@ document.addEventListener('alpine:init', () => {
       type: 'is-success'
     },
 
-    init() {
+    async init() {
+      // 1. Load cached state from localStorage for instant first paint & offline support
       const data = StorageRepository.load();
       this.profile = data.profile || DEFAULT_SAMPLE_DATA.profile;
       this.subscriptions = data.subscriptions || [];
       this.paymentHistory = data.paymentHistory || [];
       this.salaryInput = this.profile.monthlySalary;
 
-      // Initialize theme from localStorage or profile (fallback to 'dark')
+      // 2. Initialize theme from localStorage or profile (fallback to 'dark')
       const savedTheme = localStorage.getItem('subtracker_theme') || this.profile.theme || 'dark';
-      this.setTheme(savedTheme, false);
+      this.setTheme(savedTheme, false, false);
 
-      // Check if deferred PWA install prompt is available
+      // 3. Check if deferred PWA install prompt is available
       if (window.deferredInstallPrompt) {
         this.canInstallPwa = true;
       }
 
-      // Check and synchronize app installation status
+      // 4. Check and synchronize app installation status
       this.checkAndSyncInstallState();
 
-      // Check notification permissions and trigger daily scan
+      // 5. Listen for hash routes (#verify?token=..., #reset?token=..., #calendar)
+      window.addEventListener('hashchange', () => this.handleUrlHash());
+      await this.handleUrlHash();
+
+      // 6. If authenticated, synchronize state with REST API (GET /state)
+      if (this.isAuthenticated) {
+        await this.fetchServerState();
+      }
+
+      // 7. Check notification permissions and trigger daily scan
       setTimeout(() => {
         SubNotifier.checkAndNotifySystem(this.subscriptions);
       }, 1000);
     },
 
-    persist() {
+    /**
+     * Handle deep-link URL hash routes (#verify?token=..., #reset?token=..., #calendar)
+     */
+    async handleUrlHash() {
+      const hash = window.location.hash || '';
+      if (!hash) return;
+
+      if (hash === '#calendar') {
+        this.activeTab = 'calendar';
+        return;
+      }
+
+      if (hash.startsWith('#verify')) {
+        const queryIdx = hash.indexOf('?');
+        const params = new URLSearchParams(queryIdx !== -1 ? hash.slice(queryIdx + 1) : '');
+        const token = params.get('token');
+        if (token) {
+          this.authForm.verifyToken = token;
+          history.replaceState(null, '', window.location.pathname + window.location.search);
+          await this.submitVerifyToken(token);
+        } else {
+          this.openAuthModal('verify-notice');
+        }
+        return;
+      }
+
+      if (hash.startsWith('#reset')) {
+        const queryIdx = hash.indexOf('?');
+        const params = new URLSearchParams(queryIdx !== -1 ? hash.slice(queryIdx + 1) : '');
+        const token = params.get('token');
+        this.openAuthModal('reset-password');
+        if (token) {
+          this.authForm.resetToken = token;
+        }
+      }
+    },
+
+    /**
+     * Format API error messages including 422 field validation errors
+     */
+    formatApiError(err) {
+      if (!err) return 'An unexpected error occurred.';
+      if (err.fields && typeof err.fields === 'object') {
+        const firstFieldMsg = Object.values(err.fields)[0];
+        if (firstFieldMsg) return String(firstFieldMsg);
+      }
+      return err.message || 'Request failed. Please try again.';
+    },
+
+    /**
+     * Central handler for API errors (401 session expiry, 403 unverified email, offline)
+     */
+    handleApiError(err, fallbackToast = true) {
+      if (!err) return;
+
+      if (err.status === 401 && err.code !== 'INVALID_CREDENTIALS') {
+        StorageRepository.clearSession();
+        this.isAuthenticated = false;
+        this.user = null;
+        this.openAuthModal('login');
+        this.authError = 'Your session has expired. Please sign in again.';
+        this.triggerToast('Session expired. Please sign in.', 'is-warning');
+        return;
+      }
+
+      if (err.status === 403 && err.code === 'EMAIL_NOT_VERIFIED') {
+        this.unverifiedEmail = (this.user && this.user.email) || this.authForm.email || this.unverifiedEmail;
+        this.openAuthModal('verify-notice');
+        this.authError = err.message || 'Please verify your email address before continuing.';
+        this.triggerToast('Email verification required', 'is-warning');
+        return;
+      }
+
+      const msg = this.formatApiError(err);
+      if (fallbackToast) {
+        this.triggerToast(msg, 'is-danger');
+      }
+    },
+
+    /**
+     * Fetch full user state from GET /state (§8.2) and cache for offline viewing
+     */
+    async fetchServerState() {
+      if (!StorageRepository.getToken()) return false;
+      this.isLoading = true;
+      try {
+        const res = await StorageRepository.request('GET', '/state');
+        const stateData = res.data || {};
+
+        if (stateData.today) {
+          SubUtils.serverToday = stateData.today;
+        }
+        if (stateData.profile) {
+          this.profile = stateData.profile;
+          this.salaryInput = this.profile.monthlySalary;
+          if (this.profile.theme) {
+            this.setTheme(this.profile.theme, false, false);
+          }
+        }
+        if (Array.isArray(stateData.subscriptions)) {
+          this.subscriptions = stateData.subscriptions;
+        }
+        if (Array.isArray(stateData.paymentHistory)) {
+          this.paymentHistory = stateData.paymentHistory;
+        }
+
+        this.persistCacheOnly();
+
+        // Also refresh current user profile & categories in background
+        this.fetchCurrentUser();
+        this.fetchCategories();
+        return true;
+      } catch (err) {
+        if (err.status === 401 || err.status === 403) {
+          this.handleApiError(err, true);
+        } else {
+          console.warn('Could not reach API for /state, using cached offline data:', err);
+          this.triggerToast('Offline mode: viewing cached data', 'is-warning');
+        }
+        return false;
+      } finally {
+        this.isLoading = false;
+      }
+    },
+
+    async fetchCurrentUser() {
+      if (!StorageRepository.getToken()) return;
+      try {
+        const res = await StorageRepository.request('GET', '/auth/me');
+        if (res.data) {
+          this.user = res.data;
+          StorageRepository.setUser(res.data);
+        }
+      } catch (e) {}
+    },
+
+    async fetchCategories() {
+      if (!StorageRepository.getToken()) return;
+      try {
+        const res = await StorageRepository.request('GET', '/categories');
+        if (Array.isArray(res.data) && res.data.length > 0) {
+          this.categories = res.data;
+        }
+      } catch (e) {}
+    },
+
+    persistCacheOnly() {
       StorageRepository.save({
         profile: this.profile,
         subscriptions: this.subscriptions,
         paymentHistory: this.paymentHistory
       });
+    },
+
+    persist() {
+      this.persistCacheOnly();
+    },
+
+    // ----------------------------------------------------
+    // Authentication & Account Actions (§8.1, §12.2)
+    // ----------------------------------------------------
+    openAuthModal(mode = 'login') {
+      this.authMode = mode;
+      this.authError = '';
+      this.authSuccess = '';
+      this.isAuthModalOpen = true;
+    },
+
+    closeAuthModal() {
+      this.isAuthModalOpen = false;
+      this.authError = '';
+      this.authSuccess = '';
+    },
+
+    async submitLogin() {
+      this.authError = '';
+      this.authSuccess = '';
+      const email = (this.authForm.email || '').trim();
+      const password = this.authForm.password || '';
+
+      if (!email || !password) {
+        this.authError = 'Please enter both your email and password.';
+        return;
+      }
+
+      this.isAuthSubmitting = true;
+      try {
+        const res = await StorageRepository.request('POST', '/auth/login', {
+          email,
+          password,
+          deviceName: StorageRepository.getDeviceName()
+        }, { auth: false });
+
+        const { token, user } = res.data;
+        StorageRepository.setToken(token);
+        StorageRepository.setUser(user);
+        this.isAuthenticated = true;
+        this.user = user;
+        this.unverifiedEmail = '';
+        this.authForm.password = '';
+        this.closeAuthModal();
+
+        await this.fetchServerState();
+        this.triggerToast(`Welcome back, ${user.displayName || user.email}! 🇿🇦`, 'is-success');
+      } catch (err) {
+        if (err.status === 403 && err.code === 'EMAIL_NOT_VERIFIED') {
+          this.unverifiedEmail = email;
+          this.authMode = 'verify-notice';
+          this.authError = err.message || 'Your email address has not been verified yet.';
+          this.triggerToast('Please verify your email address', 'is-warning');
+        } else {
+          this.authError = this.formatApiError(err);
+        }
+      } finally {
+        this.isAuthSubmitting = false;
+      }
+    },
+
+    async loginWithDemoAccount() {
+      this.authForm.email = 'demo@subtracker.local';
+      this.authForm.password = 'Demo@1234';
+      await this.submitLogin();
+    },
+
+    async submitRegister() {
+      this.authError = '';
+      this.authSuccess = '';
+      const email = (this.authForm.email || '').trim();
+      const password = this.authForm.password || '';
+      const displayName = (this.authForm.displayName || '').trim();
+
+      if (!email || !password) {
+        this.authError = 'Please enter your email and a password (min 8 chars).';
+        return;
+      }
+
+      let timezone = 'Africa/Johannesburg';
+      try {
+        timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Africa/Johannesburg';
+      } catch (e) {}
+
+      this.isAuthSubmitting = true;
+      try {
+        const res = await StorageRepository.request('POST', '/auth/register', {
+          email,
+          password,
+          displayName: displayName || email.split('@')[0],
+          timezone,
+          deviceName: StorageRepository.getDeviceName()
+        }, { auth: false });
+
+        this.unverifiedEmail = (res.data && res.data.email) ? res.data.email : email;
+        this.authForm.password = '';
+        this.authMode = 'verify-notice';
+        this.authSuccess = (res.data && res.data.message)
+          ? res.data.message
+          : 'Account created! Please check your email to verify your account.';
+        this.triggerToast('Account created! Please verify your email.', 'is-info');
+      } catch (err) {
+        this.authError = this.formatApiError(err);
+      } finally {
+        this.isAuthSubmitting = false;
+      }
+    },
+
+    async submitVerifyToken(tokenOverride = null) {
+      this.authError = '';
+      this.authSuccess = '';
+      const token = (tokenOverride || this.authForm.verifyToken || '').trim();
+
+      if (!token) {
+        this.authError = 'Please enter the verification token from your email.';
+        return;
+      }
+
+      this.isAuthSubmitting = true;
+      try {
+        const res = await StorageRepository.request('POST', '/auth/verify-email', {
+          token,
+          deviceName: StorageRepository.getDeviceName()
+        }, { auth: false });
+
+        StorageRepository.setToken(res.data.token);
+        StorageRepository.setUser(res.data.user);
+        this.isAuthenticated = true;
+        this.user = res.data.user;
+        this.unverifiedEmail = '';
+        this.authForm.verifyToken = '';
+        this.closeAuthModal();
+
+        await this.fetchServerState();
+        this.triggerToast('Email verified! Welcome to SubTracker 🎉', 'is-success');
+      } catch (err) {
+        this.openAuthModal('verify-notice');
+        this.authError = this.formatApiError(err);
+        this.triggerToast(this.authError, 'is-danger');
+      } finally {
+        this.isAuthSubmitting = false;
+      }
+    },
+
+    async resendVerificationEmail() {
+      this.authError = '';
+      this.authSuccess = '';
+      const email = (this.unverifiedEmail || this.authForm.email || '').trim();
+
+      if (!email) {
+        this.authError = 'Please enter your email address to resend the verification link.';
+        return;
+      }
+
+      this.isAuthSubmitting = true;
+      try {
+        const res = await StorageRepository.request('POST', '/auth/resend-verification', {
+          email
+        }, { auth: false });
+
+        this.unverifiedEmail = email;
+        this.authSuccess = (res.data && res.data.message)
+          ? res.data.message
+          : 'If the account exists and is unverified, a new verification link has been sent.';
+        this.triggerToast('Verification email requested!', 'is-info');
+      } catch (err) {
+        this.authError = this.formatApiError(err);
+      } finally {
+        this.isAuthSubmitting = false;
+      }
+    },
+
+    async submitForgotPassword() {
+      this.authError = '';
+      this.authSuccess = '';
+      const email = (this.authForm.email || '').trim();
+
+      if (!email) {
+        this.authError = 'Please enter your account email address.';
+        return;
+      }
+
+      this.isAuthSubmitting = true;
+      try {
+        const res = await StorageRepository.request('POST', '/auth/forgot-password', {
+          email
+        }, { auth: false });
+
+        this.authSuccess = (res.data && res.data.message)
+          ? res.data.message
+          : 'If the account exists, a password reset link has been sent to your email.';
+        this.triggerToast('Password reset link requested', 'is-info');
+      } catch (err) {
+        this.authError = this.formatApiError(err);
+      } finally {
+        this.isAuthSubmitting = false;
+      }
+    },
+
+    async submitResetPassword() {
+      this.authError = '';
+      this.authSuccess = '';
+      const token = (this.authForm.resetToken || '').trim();
+      const password = this.authForm.newPassword || '';
+
+      if (!token || !password) {
+        this.authError = 'Please provide your reset token and new password.';
+        return;
+      }
+
+      this.isAuthSubmitting = true;
+      try {
+        await StorageRepository.request('POST', '/auth/reset-password', {
+          token,
+          password
+        }, { auth: false });
+
+        this.authForm.resetToken = '';
+        this.authForm.newPassword = '';
+        history.replaceState(null, '', window.location.pathname + window.location.search);
+        this.authMode = 'login';
+        this.authSuccess = 'Your password has been reset! Please sign in with your new password.';
+        this.triggerToast('Password reset successfully!', 'is-success');
+      } catch (err) {
+        this.authError = this.formatApiError(err);
+      } finally {
+        this.isAuthSubmitting = false;
+      }
+    },
+
+    async submitChangePassword() {
+      this.authError = '';
+      this.authSuccess = '';
+      const currentPassword = this.authForm.currentPassword || '';
+      const newPassword = this.authForm.newPassword || '';
+
+      if (!currentPassword || !newPassword) {
+        this.authError = 'Please enter both your current password and new password.';
+        return;
+      }
+
+      this.isAuthSubmitting = true;
+      try {
+        await StorageRepository.request('PUT', '/auth/password', {
+          currentPassword,
+          newPassword
+        });
+
+        this.authForm.currentPassword = '';
+        this.authForm.newPassword = '';
+        this.closeAuthModal();
+        this.triggerToast('Password updated successfully!', 'is-success');
+      } catch (err) {
+        this.authError = this.formatApiError(err);
+      } finally {
+        this.isAuthSubmitting = false;
+      }
+    },
+
+    async logout() {
+      try {
+        const pushEndpoint = await SubNotifier.getPushEndpoint();
+        await StorageRepository.request('POST', '/auth/logout', pushEndpoint ? { pushEndpoint } : {});
+      } catch (e) {}
+
+      StorageRepository.clearSession();
+      this.isAuthenticated = false;
+      this.user = null;
+      SubUtils.serverToday = null;
+
+      // Fall back to local default sample data
+      this.profile = JSON.parse(JSON.stringify(DEFAULT_SAMPLE_DATA.profile));
+      this.subscriptions = JSON.parse(JSON.stringify(DEFAULT_SAMPLE_DATA.subscriptions));
+      this.paymentHistory = JSON.parse(JSON.stringify(DEFAULT_SAMPLE_DATA.paymentHistory));
+      this.salaryInput = this.profile.monthlySalary;
+      this.persistCacheOnly();
+
+      this.triggerToast('Signed out of your account', 'is-info');
+    },
+
+    async submitDeleteAccount() {
+      this.authError = '';
+      const password = this.authForm.deletePassword || '';
+
+      if (!password) {
+        this.authError = 'Please enter your password to confirm permanent account deletion.';
+        return;
+      }
+
+      this.isAuthSubmitting = true;
+      try {
+        await StorageRepository.request('DELETE', '/auth/account', { password });
+
+        this.authForm.deletePassword = '';
+        StorageRepository.clearSession();
+        this.isAuthenticated = false;
+        this.user = null;
+        SubUtils.serverToday = null;
+        this.closeAuthModal();
+
+        this.profile = JSON.parse(JSON.stringify(DEFAULT_SAMPLE_DATA.profile));
+        this.subscriptions = JSON.parse(JSON.stringify(DEFAULT_SAMPLE_DATA.subscriptions));
+        this.paymentHistory = JSON.parse(JSON.stringify(DEFAULT_SAMPLE_DATA.paymentHistory));
+        this.salaryInput = this.profile.monthlySalary;
+        this.persistCacheOnly();
+
+        this.triggerToast('Account and all personal data deleted (POPIA)', 'is-warning');
+      } catch (err) {
+        this.authError = this.formatApiError(err);
+      } finally {
+        this.isAuthSubmitting = false;
+      }
     },
 
     // ----------------------------------------------------
@@ -288,6 +932,7 @@ document.addEventListener('alpine:init', () => {
 
     get totalCommittedExpenses() {
       return this.subscriptions.reduce((sum, sub) => {
+        if (sub.status === 'paused') return sum;
         const amt = Number(sub.amount) || 0;
         if (sub.billingCycle === 'weekly') {
           return sum + (amt * 4.333);
@@ -300,13 +945,13 @@ document.addEventListener('alpine:init', () => {
 
     get totalPaidThisMonth() {
       return this.subscriptions
-        .filter(s => s.isPaidThisCycle)
+        .filter(s => s.status !== 'paused' && s.isPaidThisCycle)
         .reduce((sum, s) => sum + (Number(s.amount) || 0), 0);
     },
 
     get totalDueThisMonth() {
       return this.subscriptions
-        .filter(s => !s.isPaidThisCycle)
+        .filter(s => s.status !== 'paused' && !s.isPaidThisCycle)
         .reduce((sum, s) => sum + (Number(s.amount) || 0), 0);
     },
 
@@ -360,7 +1005,7 @@ document.addEventListener('alpine:init', () => {
         list = list.filter(s => s.isPaidThisCycle);
       } else if (this.activeFilter === 'urgent') {
         list = list.filter(s => {
-          if (s.isPaidThisCycle) return false;
+          if (s.isPaidThisCycle || s.status === 'paused') return false;
           const days = SubUtils.getDaysUntil(s.dueDate);
           return days <= 3;
         });
@@ -375,14 +1020,34 @@ document.addEventListener('alpine:init', () => {
     },
 
     // ----------------------------------------------------
-    // Actions & Methods
+    // Actions & Methods (Integrated with API Endpoints §8)
     // ----------------------------------------------------
-    saveSalary() {
+    async saveSalary() {
       const parsed = parseFloat(this.salaryInput);
       if (isNaN(parsed) || parsed < 0) {
         this.triggerToast('Please enter a valid salary amount', 'is-danger');
         return;
       }
+
+      if (this.isAuthenticated) {
+        try {
+          const res = await StorageRepository.request('PATCH', '/profile', {
+            monthlySalary: parsed
+          });
+          if (res.data) {
+            this.profile = res.data;
+          } else {
+            this.profile.monthlySalary = parsed;
+          }
+          this.persistCacheOnly();
+          this.isSalaryModalOpen = false;
+          this.triggerToast(`Monthly income updated to ${SubUtils.formatZAR(parsed)}`, 'is-success');
+        } catch (err) {
+          this.handleApiError(err);
+        }
+        return;
+      }
+
       this.profile.monthlySalary = parsed;
       this.persist();
       this.isSalaryModalOpen = false;
@@ -432,7 +1097,7 @@ document.addEventListener('alpine:init', () => {
       this.isAddModalOpen = false;
     },
 
-    saveSubscriptionForm() {
+    async saveSubscriptionForm() {
       if (!this.formSub.name.trim()) {
         this.triggerToast('Please enter a subscription name', 'is-danger');
         return;
@@ -443,8 +1108,44 @@ document.addEventListener('alpine:init', () => {
         return;
       }
 
+      if (this.isAuthenticated) {
+        const payload = {
+          name: this.formSub.name.trim(),
+          category: this.formSub.category || 'Other',
+          amount,
+          billingCycle: this.formSub.billingCycle || 'monthly',
+          dueDate: this.formSub.dueDate,
+          startDate: this.formSub.startDate || null,
+          icon: this.formSub.icon || 'fa-receipt',
+          color: this.formSub.color || '#6366f1',
+          notes: this.formSub.notes || '',
+          status: this.formSub.status || 'active'
+        };
+
+        try {
+          if (this.formSub.id) {
+            const res = await StorageRepository.request('PUT', `/subscriptions/${this.formSub.id}`, payload);
+            const idx = this.subscriptions.findIndex(s => s.id === this.formSub.id);
+            if (idx !== -1 && res.data) {
+              this.subscriptions[idx] = res.data;
+            }
+            this.triggerToast(`${payload.name} updated successfully`, 'is-success');
+          } else {
+            const res = await StorageRepository.request('POST', '/subscriptions', payload);
+            if (res.data) {
+              this.subscriptions.push(res.data);
+            }
+            this.triggerToast(`${payload.name} added to your budget!`, 'is-success');
+          }
+          this.persistCacheOnly();
+          this.isAddModalOpen = false;
+        } catch (err) {
+          this.handleApiError(err);
+        }
+        return;
+      }
+
       if (this.formSub.id) {
-        // Edit existing
         const idx = this.subscriptions.findIndex(s => s.id === this.formSub.id);
         if (idx !== -1) {
           this.subscriptions[idx] = {
@@ -454,7 +1155,6 @@ document.addEventListener('alpine:init', () => {
           this.triggerToast(`${this.formSub.name} updated successfully`, 'is-success');
         }
       } else {
-        // Create new
         const newSub = {
           ...this.formSub,
           id: SubUtils.generateId('sub'),
@@ -473,26 +1173,78 @@ document.addEventListener('alpine:init', () => {
       this.isDeleteConfirmOpen = true;
     },
 
-    executeDelete() {
+    async executeDelete() {
       if (!this.subToDelete) return;
-      this.subscriptions = this.subscriptions.filter(s => s.id !== this.subToDelete.id);
+      const target = this.subToDelete;
+
+      if (this.isAuthenticated) {
+        try {
+          await StorageRepository.request('DELETE', `/subscriptions/${target.id}`);
+          this.subscriptions = this.subscriptions.filter(s => s.id !== target.id);
+          this.persistCacheOnly();
+          this.triggerToast(`${target.name} was removed`, 'is-warning');
+          this.isDeleteConfirmOpen = false;
+          this.subToDelete = null;
+        } catch (err) {
+          this.handleApiError(err);
+        }
+        return;
+      }
+
+      this.subscriptions = this.subscriptions.filter(s => s.id !== target.id);
       this.persist();
-      this.triggerToast(`${this.subToDelete.name} was removed`, 'is-warning');
+      this.triggerToast(`${target.name} was removed`, 'is-warning');
       this.isDeleteConfirmOpen = false;
       this.subToDelete = null;
     },
 
-    togglePaidStatus(sub) {
+    async togglePaidStatus(sub) {
       const idx = this.subscriptions.findIndex(s => s.id === sub.id);
       if (idx === -1) return;
 
       const current = this.subscriptions[idx];
       const willBePaid = !current.isPaidThisCycle;
 
+      if (this.isAuthenticated) {
+        try {
+          if (willBePaid) {
+            const res = await StorageRepository.request('POST', `/subscriptions/${current.id}/payment`, {
+              paidDate: SubUtils.getTodayISO()
+            });
+            if (res.data && res.data.subscription) {
+              this.subscriptions[idx] = res.data.subscription;
+            } else {
+              current.isPaidThisCycle = true;
+            }
+            if (res.data && res.data.payment) {
+              const exists = this.paymentHistory.some(p => p.id === res.data.payment.id);
+              if (!exists) {
+                this.paymentHistory.unshift(res.data.payment);
+              }
+            }
+            this.triggerToast(`Marked ${current.name} as paid (${SubUtils.formatZAR(current.amount)})`, 'is-success');
+          } else {
+            const res = await StorageRepository.request('DELETE', `/subscriptions/${current.id}/payment`);
+            if (res.data && res.data.subscription) {
+              this.subscriptions[idx] = res.data.subscription;
+            } else {
+              current.isPaidThisCycle = false;
+            }
+            if (res.data && res.data.removedPaymentId) {
+              this.paymentHistory = this.paymentHistory.filter(p => p.id !== res.data.removedPaymentId);
+            }
+            this.triggerToast(`Marked ${current.name} as pending`, 'is-info');
+          }
+          this.persistCacheOnly();
+        } catch (err) {
+          this.handleApiError(err);
+        }
+        return;
+      }
+
       current.isPaidThisCycle = willBePaid;
 
       if (willBePaid) {
-        // Log payment in history
         this.paymentHistory.unshift({
           id: SubUtils.generateId('pay'),
           subscriptionId: current.id,
@@ -508,23 +1260,52 @@ document.addEventListener('alpine:init', () => {
       this.persist();
     },
 
-    renewNextCycle(sub) {
+    async renewNextCycle(sub) {
       const idx = this.subscriptions.findIndex(s => s.id === sub.id);
       if (idx === -1) return;
       const target = this.subscriptions[idx];
-      const nextDue = SubUtils.advanceDueDate(target.dueDate, target.billingCycle);
+
+      if (this.isAuthenticated) {
+        try {
+          const res = await StorageRepository.request('POST', `/subscriptions/${target.id}/renew`);
+          if (res.data) {
+            this.subscriptions[idx] = res.data;
+            this.persistCacheOnly();
+            this.triggerToast(`${res.data.name} renewed for next cycle (Due: ${SubUtils.formatDate(res.data.dueDate)})`, 'is-success');
+          }
+        } catch (err) {
+          this.handleApiError(err);
+        }
+        return;
+      }
+
+      const nextDue = SubUtils.advanceDueDate(target.dueDate, target.billingCycle, target.billingDay);
       target.dueDate = nextDue;
       target.isPaidThisCycle = false;
       this.persist();
       this.triggerToast(`${target.name} renewed for next cycle (Due: ${SubUtils.formatDate(nextDue)})`, 'is-success');
     },
 
-    resetAllPaidStatus() {
-      if (confirm('Reset payment status for all subscriptions to pending for the new month?')) {
-        this.subscriptions.forEach(s => s.isPaidThisCycle = false);
-        this.persist();
-        this.triggerToast('All subscriptions reset to pending for the new month!', 'is-success');
+    async resetAllPaidStatus() {
+      if (!confirm('Reset payment status for all subscriptions to pending for the new month?')) {
+        return;
       }
+
+      if (this.isAuthenticated) {
+        try {
+          await StorageRepository.request('POST', '/subscriptions/reset-paid');
+          this.subscriptions.forEach(s => { s.isPaidThisCycle = false; });
+          this.persistCacheOnly();
+          this.triggerToast('All subscriptions reset to pending for the new month!', 'is-success');
+        } catch (err) {
+          this.handleApiError(err);
+        }
+        return;
+      }
+
+      this.subscriptions.forEach(s => { s.isPaidThisCycle = false; });
+      this.persist();
+      this.triggerToast('All subscriptions reset to pending for the new month!', 'is-success');
     },
 
     triggerToast(message, type = 'is-success') {
@@ -540,6 +1321,25 @@ document.addEventListener('alpine:init', () => {
       const granted = await SubNotifier.requestPermission();
       if (granted) {
         this.profile.systemNotificationsEnabled = true;
+
+        if (this.isAuthenticated) {
+          try {
+            const keyRes = await StorageRepository.request('GET', '/push/vapid-public-key', null, { auth: false });
+            const publicKey = keyRes.data && keyRes.data.publicKey;
+            if (publicKey) {
+              const pushSub = await SubNotifier.subscribeToPush(publicKey);
+              if (pushSub) {
+                await StorageRepository.request('POST', '/push/subscriptions', pushSub);
+              }
+            }
+            await StorageRepository.request('PATCH', '/profile', {
+              systemNotificationsEnabled: true
+            });
+          } catch (err) {
+            console.warn('Push registration warning:', err);
+          }
+        }
+
         this.persist();
         SubNotifier.sendSystemNotification('SubTracker Alerts Active! 🇿🇦', {
           body: 'You will receive notifications for upcoming Rand subscription payments.'
@@ -547,19 +1347,52 @@ document.addEventListener('alpine:init', () => {
         this.triggerToast('System notifications enabled!', 'is-success');
       } else {
         this.profile.systemNotificationsEnabled = false;
+        if (this.isAuthenticated) {
+          try {
+            await StorageRepository.request('PATCH', '/profile', {
+              systemNotificationsEnabled: false
+            });
+          } catch (e) {}
+        }
         this.persist();
         this.triggerToast('Notification permission was not granted', 'is-warning');
       }
     },
 
-    testNotification() {
+    async testNotification() {
+      if (this.isAuthenticated) {
+        try {
+          await StorageRepository.request('POST', '/push/test');
+        } catch (err) {
+          if (err.status === 429) {
+            this.handleApiError(err);
+            return;
+          }
+        }
+      }
       SubNotifier.sendSystemNotification('SubTracker Test Alert', {
         body: 'Showmax payment of R 99.00 is due in 2 days.'
       });
       this.triggerToast('Test alert triggered!', 'is-info');
     },
 
-    exportData() {
+    async exportData() {
+      if (this.isAuthenticated) {
+        try {
+          const res = await StorageRepository.request('GET', '/backup');
+          const backupPayload = res.data || {
+            profile: this.profile,
+            subscriptions: this.subscriptions,
+            paymentHistory: this.paymentHistory
+          };
+          StorageRepository.exportBackup(backupPayload);
+          this.triggerToast('Account backup downloaded (JSON)', 'is-success');
+          return;
+        } catch (err) {
+          this.handleApiError(err, false);
+        }
+      }
+
       StorageRepository.exportBackup({
         profile: this.profile,
         subscriptions: this.subscriptions,
@@ -573,26 +1406,48 @@ document.addEventListener('alpine:init', () => {
       if (!file) return;
       try {
         const backup = await StorageRepository.importBackup(file);
-        this.profile = backup.profile;
-        this.subscriptions = backup.subscriptions;
-        this.paymentHistory = backup.paymentHistory || [];
-        this.persist();
-        this.triggerToast('Database successfully restored from backup!', 'is-success');
+
+        if (this.isAuthenticated) {
+          await StorageRepository.request('POST', '/backup', backup);
+          await this.fetchServerState();
+          this.triggerToast('Account database restored from backup!', 'is-success');
+        } else {
+          this.profile = backup.profile;
+          this.subscriptions = backup.subscriptions;
+          this.paymentHistory = backup.paymentHistory || [];
+          this.salaryInput = this.profile.monthlySalary;
+          this.persist();
+          this.triggerToast('Database successfully restored from backup!', 'is-success');
+        }
       } catch (err) {
-        alert('Failed to import backup: ' + err.message);
+        const msg = this.formatApiError(err);
+        this.triggerToast('Failed to import backup: ' + msg, 'is-danger');
       }
       event.target.value = '';
     },
 
-    resetToDefaults() {
-      if (confirm('Reset all subscriptions and budget to default South African demo data?')) {
-        this.profile = JSON.parse(JSON.stringify(DEFAULT_SAMPLE_DATA.profile));
-        this.subscriptions = JSON.parse(JSON.stringify(DEFAULT_SAMPLE_DATA.subscriptions));
-        this.paymentHistory = JSON.parse(JSON.stringify(DEFAULT_SAMPLE_DATA.paymentHistory));
-        this.salaryInput = this.profile.monthlySalary;
-        this.persist();
-        this.triggerToast('Reset to demo South African data', 'is-info');
+    async resetToDefaults() {
+      if (!confirm('Reset all subscriptions and budget to default South African demo data?')) {
+        return;
       }
+
+      if (this.isAuthenticated) {
+        try {
+          await StorageRepository.request('POST', '/account/reset-demo');
+          await this.fetchServerState();
+          this.triggerToast('Account reset to South African demo data!', 'is-info');
+        } catch (err) {
+          this.handleApiError(err);
+        }
+        return;
+      }
+
+      this.profile = JSON.parse(JSON.stringify(DEFAULT_SAMPLE_DATA.profile));
+      this.subscriptions = JSON.parse(JSON.stringify(DEFAULT_SAMPLE_DATA.subscriptions));
+      this.paymentHistory = JSON.parse(JSON.stringify(DEFAULT_SAMPLE_DATA.paymentHistory));
+      this.salaryInput = this.profile.monthlySalary;
+      this.persist();
+      this.triggerToast('Reset to demo South African data', 'is-info');
     },
 
     // ----------------------------------------------------
@@ -600,14 +1455,14 @@ document.addEventListener('alpine:init', () => {
     // ----------------------------------------------------
     toggleTheme() {
       const nextTheme = this.theme === 'dark' ? 'light' : 'dark';
-      this.setTheme(nextTheme, true);
+      this.setTheme(nextTheme, true, true);
     },
 
-    setTheme(newTheme, showToastNotice = true) {
+    async setTheme(newTheme, showToastNotice = true, syncToServer = true) {
       this.theme = newTheme === 'light' ? 'light' : 'dark';
       this.profile.theme = this.theme;
       
-      // Persist to both independent key and profile DB
+      // Persist to both independent key and profile DB (§12.6)
       localStorage.setItem('subtracker_theme', this.theme);
       document.documentElement.setAttribute('data-theme', this.theme);
 
@@ -617,7 +1472,15 @@ document.addEventListener('alpine:init', () => {
         metaTheme.setAttribute('content', this.theme === 'light' ? '#f1f5f9' : '#0a0e17');
       }
 
-      this.persist();
+      this.persistCacheOnly();
+
+      if (this.isAuthenticated && syncToServer) {
+        try {
+          await StorageRepository.request('PATCH', '/profile', {
+            theme: this.theme
+          });
+        } catch (e) {}
+      }
 
       if (showToastNotice) {
         this.triggerToast(`Switched to ${this.theme === 'dark' ? 'Dark' : 'Light'} Mode`, 'is-info');
@@ -629,7 +1492,6 @@ document.addEventListener('alpine:init', () => {
     // ----------------------------------------------------
     triggerSwInstaller() {
       if ('serviceWorker' in navigator) {
-        // Register / update SW which fires the SW install lifecycle event
         navigator.serviceWorker.register('./sw.js').then((reg) => {
           reg.update();
           if (reg.installing) {
@@ -668,7 +1530,6 @@ document.addEventListener('alpine:init', () => {
         this.isAppInstalled = false;
       }
 
-      // Check for native installed related apps if supported
       if ('getInstalledRelatedApps' in navigator) {
         navigator.getInstalledRelatedApps().then((relatedApps) => {
           if (relatedApps && relatedApps.length > 0) {
@@ -679,7 +1540,6 @@ document.addEventListener('alpine:init', () => {
         });
       }
 
-      // Dynamic listener for display-mode standalone
       try {
         const standaloneMq = window.matchMedia('(display-mode: standalone)');
         if (standaloneMq && standaloneMq.addEventListener) {

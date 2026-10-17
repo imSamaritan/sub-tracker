@@ -75,12 +75,12 @@
   <!-- Font Awesome CDN -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <!-- Custom App CSS -->
-  <link rel="stylesheet" href="css/app.css?v=12">
+  <link rel="stylesheet" href="css/app.css?v=13">
 
   <!-- App Core Logic -->
-  <script src="js/utils.js?v=12"></script>
-  <script src="js/notifications.js?v=12"></script>
-  <script src="js/store.js?v=12"></script>
+  <script src="js/utils.js?v=13"></script>
+  <script src="js/notifications.js?v=13"></script>
+  <script src="js/store.js?v=13"></script>
 
   <!-- Alpine.js CDN (defer) -->
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
@@ -128,6 +128,17 @@
           <i class="fa-solid fa-bell"></i>
           <span class="notification-badge" x-show="$store.app.alertCount > 0" x-text="$store.app.alertCount" x-cloak></span>
         </button>
+
+        <!-- Account / Cloud Auth Button -->
+        <button class="icon-btn-round"
+                @click="$store.app.isAuthenticated ? ($store.app.activeTab = 'settings') : $store.app.openAuthModal('login')"
+                :title="$store.app.isAuthenticated ? `Signed in as ${$store.app.user?.email || 'User'}` : 'Sign In / Create Account'"
+                id="account-auth-btn"
+                aria-label="Account & Cloud Sync">
+          <i :class="$store.app.isAuthenticated ? 'fa-solid fa-user-check' : 'fa-solid fa-user'"
+             :style="{ color: $store.app.isAuthenticated ? '#10b981' : '#a5b4fc' }"></i>
+          <span class="auth-status-dot" x-show="$store.app.isAuthenticated" x-cloak></span>
+        </button>
       </div>
     </header>
 
@@ -142,6 +153,32 @@
 
     <!-- MAIN BODY SECTIONS -->
     <main class="p-4">
+
+      <!-- Email Verification Pending Notice Banner (§12.2) -->
+      <template x-if="$store.app.unverifiedEmail && !$store.app.isAuthenticated">
+        <div class="verify-banner mb-4">
+          <div class="is-flex is-justify-content-space-between is-align-items-flex-start" style="gap: 10px;">
+            <div class="is-flex is-align-items-flex-start" style="gap: 10px;">
+              <span class="icon mt-1" style="color: #f59e0b;"><i class="fa-solid fa-envelope-circle-check fa-lg"></i></span>
+              <div>
+                <div class="has-text-weight-bold is-size-7" style="color: #fbbf24;">Email Verification Required</div>
+                <div class="is-size-7 mt-1" style="color: var(--text-muted);">
+                  Please verify <strong style="color: white;" x-text="$store.app.unverifiedEmail"></strong> to activate your account and cloud sync.
+                </div>
+                <div class="buttons are-small mt-2 mb-0">
+                  <button class="button is-warning is-small is-rounded" @click="$store.app.openAuthModal('verify-notice')">
+                    <i class="fa-solid fa-key mr-1"></i> Enter Token
+                  </button>
+                  <button class="button is-dark is-small is-rounded" style="background: rgba(255,255,255,0.08); border-color: var(--border-glass);" @click="$store.app.resendVerificationEmail()">
+                    <i class="fa-solid fa-paper-plane mr-1"></i> Resend Link
+                  </button>
+                </div>
+              </div>
+            </div>
+            <button class="delete is-small" @click="$store.app.unverifiedEmail = ''"></button>
+          </div>
+        </div>
+      </template>
 
       <!-- ================================================================= -->
       <!-- TAB 1: DASHBOARD VIEW                                             -->
@@ -469,7 +506,86 @@
       <div x-show="$store.app.activeTab === 'settings'" x-transition.opacity x-cloak>
         <div class="mb-4">
           <h2 class="has-text-weight-bold is-size-5" style="color: white; margin: 0;">Budget & Settings</h2>
-          <p class="is-size-7" style="color: var(--text-muted);">Configure income, mock database & backup</p>
+          <p class="is-size-7" style="color: var(--text-muted);">Configure account sync, income, theme & backup</p>
+        </div>
+
+        <!-- Account & Cloud Sync Card (§8.1, §12.2) -->
+        <div class="glass-panel p-4 mb-4">
+          <div class="is-flex is-justify-content-space-between is-align-items-center mb-2">
+            <h3 class="has-text-weight-semibold is-size-6" style="color: #a5b4fc; margin: 0;">
+              <i class="fa-solid fa-cloud mr-1"></i> Account & Cloud Sync
+            </h3>
+            <span class="status-pill" :class="$store.app.isAuthenticated ? 'is-paid' : 'is-normal'">
+              <i :class="$store.app.isAuthenticated ? 'fa-solid fa-circle-check' : 'fa-solid fa-laptop'"></i>
+              <span x-text="$store.app.isAuthenticated ? 'Synced' : 'Local Demo'"></span>
+            </span>
+          </div>
+
+          <!-- Not Signed In State -->
+          <template x-if="!$store.app.isAuthenticated">
+            <div>
+              <p class="is-size-7 mb-3" style="color: var(--text-muted);">
+                Sign in or create a free SubTracker account to sync your ZAR budget, subscriptions, and Web Push reminders across all your devices.
+              </p>
+              <div class="columns is-mobile is-variable is-2 mb-2">
+                <div class="column is-6">
+                  <button type="button"
+                          class="button is-primary is-fullwidth"
+                          style="background: var(--accent-primary-gradient); border-radius: var(--radius-md); font-weight: 600;"
+                          @click="$store.app.openAuthModal('login')">
+                    <i class="fa-solid fa-right-to-bracket mr-2"></i> Sign In
+                  </button>
+                </div>
+                <div class="column is-6">
+                  <button type="button"
+                          class="button is-dark is-fullwidth"
+                          style="background: rgba(255,255,255,0.06); border-color: var(--border-glass); border-radius: var(--radius-md); font-weight: 600;"
+                          @click="$store.app.openAuthModal('register')">
+                    <i class="fa-solid fa-user-plus mr-2" style="color: #a5b4fc;"></i> Register
+                  </button>
+                </div>
+              </div>
+              <template x-if="$store.app.unverifiedEmail">
+                <button type="button"
+                        class="button is-dark is-small is-fullwidth mt-2"
+                        style="background: rgba(245, 158, 11, 0.14); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.35); border-radius: var(--radius-md);"
+                        @click="$store.app.openAuthModal('verify-notice')">
+                  <i class="fa-solid fa-envelope-circle-check mr-2"></i>
+                  <span>Pending Verification (<span x-text="$store.app.unverifiedEmail"></span>)</span>
+                </button>
+              </template>
+            </div>
+          </template>
+
+          <!-- Signed In State -->
+          <template x-if="$store.app.isAuthenticated">
+            <div>
+              <div class="is-flex is-align-items-center mb-3 p-3" style="gap: 12px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-glass); border-radius: var(--radius-md);">
+                <div class="sub-icon-box" style="background: var(--accent-primary-gradient); width: 42px; height: 42px; border-radius: 50%;">
+                  <i class="fa-solid fa-user-check"></i>
+                </div>
+                <div style="min-width: 0; flex: 1;">
+                  <div class="has-text-weight-bold is-size-6 is-truncated" style="color: white;" x-text="$store.app.user?.displayName || 'SubTracker User'"></div>
+                  <div class="is-size-7 is-truncated" style="color: var(--text-muted);" x-text="$store.app.user?.email || ''"></div>
+                </div>
+              </div>
+
+              <div class="buttons are-small">
+                <button class="button is-dark is-small" style="background: rgba(255,255,255,0.06); border-color: var(--border-glass);" @click="$store.app.fetchServerState()">
+                  <i class="fa-solid fa-rotate mr-1" :class="{ 'fa-spin': $store.app.isLoading }"></i> Sync Now
+                </button>
+                <button class="button is-dark is-small" style="background: rgba(255,255,255,0.06); border-color: var(--border-glass);" @click="$store.app.openAuthModal('change-password')">
+                  <i class="fa-solid fa-key mr-1"></i> Password
+                </button>
+                <button class="button is-dark is-small" style="background: rgba(255,255,255,0.06); border-color: var(--border-glass);" @click="$store.app.logout()">
+                  <i class="fa-solid fa-right-from-bracket mr-1"></i> Sign Out
+                </button>
+                <button class="button is-dark is-small" style="background: rgba(239,68,68,0.12); color: #f87171; border-color: rgba(239,68,68,0.3);" @click="$store.app.openAuthModal('delete-account')">
+                  <i class="fa-solid fa-user-xmark mr-1"></i> Delete Account
+                </button>
+              </div>
+            </div>
+          </template>
         </div>
 
         <!-- Appearance & Theme Mode Card -->
@@ -544,13 +660,13 @@
           </button>
         </div>
 
-        <!-- LocalStorage Mock Database Management -->
+        <!-- Database Backup & Demo Reset Card -->
         <div class="glass-panel p-4 mb-4">
           <h3 class="has-text-weight-semibold is-size-6 mb-3" style="color: #34d399;">
-            <i class="fa-solid fa-database mr-1"></i> LocalStorage Mock Database
+            <i class="fa-solid fa-database mr-1"></i> Database Backup & Demo Reset
           </h3>
           <p class="is-size-7 mb-3" style="color: var(--text-muted);">
-            Your data is stored in the browser's persistent mock database. You can export it to JSON as a backup or to seed your future MySQL database.
+            Export your budget and subscriptions as a portable JSON backup, restore from an existing backup file, or reset to the default South African demo dataset.
           </p>
           <div class="buttons">
             <button class="button is-dark is-small" style="background: rgba(255,255,255,0.06); border-color: var(--border-glass);" @click="$store.app.exportData()">
@@ -566,14 +682,14 @@
           </div>
         </div>
 
-        <!-- Future PHP / MySQL Architecture Note -->
+        <!-- PHP & MySQL REST API Status Card -->
         <div class="glass-panel p-4 mb-4" style="background: rgba(99, 102, 241, 0.08); border-color: rgba(99, 102, 241, 0.25);">
           <div class="is-flex is-align-items-center mb-2" style="gap: 8px;">
             <i class="fa-brands fa-php fa-xl" style="color: #818cf8;"></i>
-            <span class="has-text-weight-bold is-size-6" style="color: #a5b4fc;">PHP & MySQL Migration Ready</span>
+            <span class="has-text-weight-bold is-size-6" style="color: #a5b4fc;">PHP & MySQL Cloud API Active</span>
           </div>
           <p class="is-size-7" style="color: var(--text-muted); line-height: 1.5;">
-            The data store is decoupled in <code>js/store.js</code> under <code>StorageRepository</code>. When you are ready to introduce your PHP backend and MySQL database, simply swap the localStorage methods with standard <code>fetch('api/subscriptions.php')</code> requests.
+            Powered by the SubTracker Slim 4 REST API (<code>/api/v1</code>) with verified email accounts, bearer token security, Web Push reminders, and offline local cache fallback.
           </p>
         </div>
       </div>
@@ -1132,6 +1248,368 @@
       </div>
     </div>
 
+    <!-- ================================================================= -->
+    <!-- BOTTOM SHEET: AUTHENTICATION, REGISTRATION & EMAIL VERIFICATION   -->
+    <!-- ================================================================= -->
+    <div class="bottom-sheet-backdrop" x-show="$store.app.isAuthModalOpen" x-transition.opacity.duration.250ms x-cloak @click.self="$store.app.closeAuthModal()">
+      <div class="bottom-sheet-container" x-show="$store.app.isAuthModalOpen" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="transform translate-y-full" x-transition:enter-end="transform translate-y-0" x-transition:leave="transition ease-in duration-200" x-transition:leave-start="transform translate-y-0" x-transition:leave-end="transform translate-y-full">
+        <div class="bottom-sheet-handle"></div>
+
+        <!-- Modal Header -->
+        <div class="is-flex is-justify-content-space-between is-align-items-center mb-3">
+          <div class="is-flex is-align-items-center" style="gap: 10px;">
+            <div class="sub-icon-box" style="background: var(--accent-primary-gradient); width: 38px; height: 38px; color: white;">
+              <i :class="{
+                'fa-solid fa-right-to-bracket': $store.app.authMode === 'login',
+                'fa-solid fa-user-plus': $store.app.authMode === 'register',
+                'fa-solid fa-envelope-circle-check': $store.app.authMode === 'verify-notice',
+                'fa-solid fa-key': $store.app.authMode === 'forgot-password' || $store.app.authMode === 'reset-password' || $store.app.authMode === 'change-password',
+                'fa-solid fa-user-xmark': $store.app.authMode === 'delete-account'
+              }"></i>
+            </div>
+            <div>
+              <h3 class="has-text-weight-bold is-size-5" style="color: white; margin: 0;" x-text="
+                $store.app.authMode === 'login' ? 'Sign In to SubTracker' :
+                $store.app.authMode === 'register' ? 'Create Account' :
+                $store.app.authMode === 'verify-notice' ? 'Verify Your Email' :
+                $store.app.authMode === 'forgot-password' ? 'Forgot Password' :
+                $store.app.authMode === 'reset-password' ? 'Reset Password' :
+                $store.app.authMode === 'change-password' ? 'Change Password' :
+                'Delete Account'
+              "></h3>
+              <p class="is-size-7" style="color: var(--text-muted); margin: 0;">🇿🇦 Cloud Budget & Subscription Sync</p>
+            </div>
+          </div>
+          <button class="delete is-medium" @click="$store.app.closeAuthModal()"></button>
+        </div>
+
+        <!-- Mode Switcher Tabs (Login / Register) -->
+        <template x-if="$store.app.authMode === 'login' || $store.app.authMode === 'register'">
+          <div class="auth-mode-tabs">
+            <button type="button"
+                    class="auth-mode-tab"
+                    :class="{ 'is-active': $store.app.authMode === 'login' }"
+                    @click="$store.app.openAuthModal('login')">
+              <i class="fa-solid fa-right-to-bracket mr-1"></i> Sign In
+            </button>
+            <button type="button"
+                    class="auth-mode-tab"
+                    :class="{ 'is-active': $store.app.authMode === 'register' }"
+                    @click="$store.app.openAuthModal('register')">
+              <i class="fa-solid fa-user-plus mr-1"></i> Create Account
+            </button>
+          </div>
+        </template>
+
+        <!-- Error / Success Feedback Alerts -->
+        <template x-if="$store.app.authError">
+          <div class="auth-alert is-error">
+            <i class="fa-solid fa-circle-exclamation mt-1"></i>
+            <span x-text="$store.app.authError"></span>
+          </div>
+        </template>
+
+        <template x-if="$store.app.authSuccess">
+          <div class="auth-alert is-success">
+            <i class="fa-solid fa-circle-check mt-1"></i>
+            <span x-text="$store.app.authSuccess"></span>
+          </div>
+        </template>
+
+        <!-- =============================================================== -->
+        <!-- VIEW 1: LOGIN FORM                                              -->
+        <!-- =============================================================== -->
+        <template x-if="$store.app.authMode === 'login'">
+          <form @submit.prevent="$store.app.submitLogin()">
+            <div class="field">
+              <label class="label">Email Address</label>
+              <div class="control has-icons-left">
+                <input class="input" type="email" placeholder="thabo@example.co.za" x-model="$store.app.authForm.email" required autocomplete="email">
+                <span class="icon is-left" style="color: var(--text-muted);"><i class="fa-solid fa-envelope"></i></span>
+              </div>
+            </div>
+
+            <div class="field">
+              <div class="is-flex is-justify-content-space-between is-align-items-center mb-1">
+                <label class="label mb-0">Password</label>
+                <button type="button" class="button is-ghost is-small p-0 is-size-7" style="color: #818cf8; height: auto;" @click="$store.app.openAuthModal('forgot-password')">
+                  Forgot password?
+                </button>
+              </div>
+              <div class="control has-icons-left">
+                <input class="input" type="password" placeholder="••••••••" x-model="$store.app.authForm.password" required autocomplete="current-password">
+                <span class="icon is-left" style="color: var(--text-muted);"><i class="fa-solid fa-lock"></i></span>
+              </div>
+            </div>
+
+            <div class="field mt-4">
+              <button type="submit"
+                      class="button is-primary is-fullwidth is-medium"
+                      :class="{ 'is-loading': $store.app.isAuthSubmitting }"
+                      style="background: var(--accent-primary-gradient); border-radius: var(--radius-md); font-weight: 600;">
+                <i class="fa-solid fa-right-to-bracket mr-2"></i>
+                <span>Sign In</span>
+              </button>
+            </div>
+
+            <div class="auth-divider">Or try instant demo</div>
+
+            <button type="button"
+                    class="button is-dark is-fullwidth is-small"
+                    style="background: rgba(255,255,255,0.06); border-color: var(--border-glass); border-radius: var(--radius-md);"
+                    @click="$store.app.loginWithDemoAccount()">
+              <i class="fa-solid fa-bolt mr-2" style="color: #f59e0b;"></i>
+              <span>Sign In with Demo Account (demo@subtracker.local)</span>
+            </button>
+          </form>
+        </template>
+
+        <!-- =============================================================== -->
+        <!-- VIEW 2: REGISTER FORM                                           -->
+        <!-- =============================================================== -->
+        <template x-if="$store.app.authMode === 'register'">
+          <form @submit.prevent="$store.app.submitRegister()">
+            <div class="field">
+              <label class="label">Your Name</label>
+              <div class="control has-icons-left">
+                <input class="input" type="text" placeholder="e.g. Thabo Mokoena" x-model="$store.app.authForm.displayName" required autocomplete="name">
+                <span class="icon is-left" style="color: var(--text-muted);"><i class="fa-solid fa-user"></i></span>
+              </div>
+            </div>
+
+            <div class="field">
+              <label class="label">Email Address *</label>
+              <div class="control has-icons-left">
+                <input class="input" type="email" placeholder="thabo@example.co.za" x-model="$store.app.authForm.email" required autocomplete="email">
+                <span class="icon is-left" style="color: var(--text-muted);"><i class="fa-solid fa-envelope"></i></span>
+              </div>
+            </div>
+
+            <div class="field">
+              <label class="label">Password * (min 8 chars, letter + number)</label>
+              <div class="control has-icons-left">
+                <input class="input" type="password" placeholder="At least 8 characters" x-model="$store.app.authForm.password" required minlength="8" autocomplete="new-password">
+                <span class="icon is-left" style="color: var(--text-muted);"><i class="fa-solid fa-lock"></i></span>
+              </div>
+              <p class="help" style="color: var(--text-dim);">We'll send a verification link to your email to activate your account.</p>
+            </div>
+
+            <div class="field mt-4">
+              <button type="submit"
+                      class="button is-primary is-fullwidth is-medium"
+                      :class="{ 'is-loading': $store.app.isAuthSubmitting }"
+                      style="background: var(--accent-primary-gradient); border-radius: var(--radius-md); font-weight: 600;">
+                <i class="fa-solid fa-user-plus mr-2"></i>
+                <span>Create Account</span>
+              </button>
+            </div>
+          </form>
+        </template>
+
+        <!-- =============================================================== -->
+        <!-- VIEW 3: EMAIL VERIFICATION NOTICE & TOKEN RECEIVER              -->
+        <!-- =============================================================== -->
+        <template x-if="$store.app.authMode === 'verify-notice'">
+          <div>
+            <div class="glass-panel p-3 mb-3" style="background: rgba(245, 158, 11, 0.08); border-color: rgba(245, 158, 11, 0.3);">
+              <p class="is-size-7" style="color: var(--text-muted); line-height: 1.5;">
+                Email verification is required before signing in. Please click the verification link sent to
+                <strong style="color: white;" x-text="$store.app.unverifiedEmail || $store.app.authForm.email || 'your email'"></strong>,
+                or paste your verification token below.
+              </p>
+            </div>
+
+            <form @submit.prevent="$store.app.submitVerifyToken()">
+              <div class="field">
+                <label class="label">Verification Token</label>
+                <div class="control has-icons-left">
+                  <input class="input" type="text" placeholder="Paste 64-character token from email..." x-model="$store.app.authForm.verifyToken" required>
+                  <span class="icon is-left" style="color: var(--text-muted);"><i class="fa-solid fa-key"></i></span>
+                </div>
+              </div>
+
+              <div class="field mt-3">
+                <button type="submit"
+                        class="button is-primary is-fullwidth"
+                        :class="{ 'is-loading': $store.app.isAuthSubmitting }"
+                        style="background: var(--accent-primary-gradient); border-radius: var(--radius-md); font-weight: 600;">
+                  <i class="fa-solid fa-check-double mr-2"></i>
+                  <span>Verify Email & Sign In</span>
+                </button>
+              </div>
+            </form>
+
+            <div class="auth-divider">Didn't receive the email?</div>
+
+            <div class="field">
+              <div class="field has-addons">
+                <div class="control is-expanded">
+                  <input class="input is-small" type="email" placeholder="Your email address" x-model="$store.app.unverifiedEmail">
+                </div>
+                <div class="control">
+                  <button type="button"
+                          class="button is-dark is-small"
+                          :class="{ 'is-loading': $store.app.isAuthSubmitting }"
+                          style="background: rgba(255,255,255,0.08); border-color: var(--border-glass);"
+                          @click="$store.app.resendVerificationEmail()">
+                    <i class="fa-solid fa-paper-plane mr-1"></i> Resend Link
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="has-text-centered mt-3">
+              <button type="button" class="button is-ghost is-small" style="color: #818cf8;" @click="$store.app.openAuthModal('login')">
+                <i class="fa-solid fa-arrow-left mr-1"></i> Back to Sign In
+              </button>
+            </div>
+          </div>
+        </template>
+
+        <!-- =============================================================== -->
+        <!-- VIEW 4: FORGOT PASSWORD                                         -->
+        <!-- =============================================================== -->
+        <template x-if="$store.app.authMode === 'forgot-password'">
+          <div>
+            <p class="is-size-7 mb-3" style="color: var(--text-muted);">
+              Enter your registered email address and we'll send you a one-time link to reset your password.
+            </p>
+
+            <form @submit.prevent="$store.app.submitForgotPassword()">
+              <div class="field">
+                <label class="label">Account Email</label>
+                <div class="control has-icons-left">
+                  <input class="input" type="email" placeholder="thabo@example.co.za" x-model="$store.app.authForm.email" required>
+                  <span class="icon is-left" style="color: var(--text-muted);"><i class="fa-solid fa-envelope"></i></span>
+                </div>
+              </div>
+
+              <div class="field mt-4">
+                <button type="submit"
+                        class="button is-primary is-fullwidth"
+                        :class="{ 'is-loading': $store.app.isAuthSubmitting }"
+                        style="background: var(--accent-primary-gradient); border-radius: var(--radius-md); font-weight: 600;">
+                  <i class="fa-solid fa-paper-plane mr-2"></i>
+                  <span>Send Reset Link</span>
+                </button>
+              </div>
+            </form>
+
+            <div class="is-flex is-justify-content-space-between mt-3">
+              <button type="button" class="button is-ghost is-small p-0" style="color: #818cf8;" @click="$store.app.openAuthModal('login')">
+                <i class="fa-solid fa-arrow-left mr-1"></i> Back to Sign In
+              </button>
+              <button type="button" class="button is-ghost is-small p-0" style="color: #38bdf8;" @click="$store.app.openAuthModal('reset-password')">
+                Have a reset token?
+              </button>
+            </div>
+          </div>
+        </template>
+
+        <!-- =============================================================== -->
+        <!-- VIEW 5: RESET PASSWORD (WITH TOKEN)                             -->
+        <!-- =============================================================== -->
+        <template x-if="$store.app.authMode === 'reset-password'">
+          <form @submit.prevent="$store.app.submitResetPassword()">
+            <div class="field">
+              <label class="label">Reset Token *</label>
+              <div class="control has-icons-left">
+                <input class="input" type="text" placeholder="Paste reset token from email" x-model="$store.app.authForm.resetToken" required>
+                <span class="icon is-left" style="color: var(--text-muted);"><i class="fa-solid fa-key"></i></span>
+              </div>
+            </div>
+
+            <div class="field">
+              <label class="label">New Password * (min 8 chars)</label>
+              <div class="control has-icons-left">
+                <input class="input" type="password" placeholder="Enter new password" x-model="$store.app.authForm.newPassword" required minlength="8">
+                <span class="icon is-left" style="color: var(--text-muted);"><i class="fa-solid fa-lock"></i></span>
+              </div>
+            </div>
+
+            <div class="field mt-4">
+              <button type="submit"
+                      class="button is-primary is-fullwidth"
+                      :class="{ 'is-loading': $store.app.isAuthSubmitting }"
+                      style="background: var(--accent-primary-gradient); border-radius: var(--radius-md); font-weight: 600;">
+                <i class="fa-solid fa-check mr-2"></i>
+                <span>Set New Password</span>
+              </button>
+            </div>
+
+            <div class="has-text-centered mt-3">
+              <button type="button" class="button is-ghost is-small" style="color: #818cf8;" @click="$store.app.openAuthModal('login')">
+                <i class="fa-solid fa-arrow-left mr-1"></i> Back to Sign In
+              </button>
+            </div>
+          </form>
+        </template>
+
+        <!-- =============================================================== -->
+        <!-- VIEW 6: CHANGE PASSWORD (AUTHENTICATED)                         -->
+        <!-- =============================================================== -->
+        <template x-if="$store.app.authMode === 'change-password'">
+          <form @submit.prevent="$store.app.submitChangePassword()">
+            <div class="field">
+              <label class="label">Current Password *</label>
+              <div class="control has-icons-left">
+                <input class="input" type="password" placeholder="Current password" x-model="$store.app.authForm.currentPassword" required>
+                <span class="icon is-left" style="color: var(--text-muted);"><i class="fa-solid fa-lock"></i></span>
+              </div>
+            </div>
+
+            <div class="field">
+              <label class="label">New Password * (min 8 chars, letter + number)</label>
+              <div class="control has-icons-left">
+                <input class="input" type="password" placeholder="New password" x-model="$store.app.authForm.newPassword" required minlength="8">
+                <span class="icon is-left" style="color: var(--text-muted);"><i class="fa-solid fa-key"></i></span>
+              </div>
+            </div>
+
+            <div class="field mt-4">
+              <button type="submit"
+                      class="button is-primary is-fullwidth"
+                      :class="{ 'is-loading': $store.app.isAuthSubmitting }"
+                      style="background: var(--accent-primary-gradient); border-radius: var(--radius-md); font-weight: 600;">
+                <i class="fa-solid fa-check mr-2"></i>
+                <span>Update Password</span>
+              </button>
+            </div>
+          </form>
+        </template>
+
+        <!-- =============================================================== -->
+        <!-- VIEW 7: DELETE ACCOUNT (POPIA COMPLIANCE §8.1)                  -->
+        <!-- =============================================================== -->
+        <template x-if="$store.app.authMode === 'delete-account'">
+          <form @submit.prevent="$store.app.submitDeleteAccount()">
+            <div class="auth-alert is-error">
+              <i class="fa-solid fa-triangle-exclamation mt-1"></i>
+              <span>This will permanently delete your account, profile, subscriptions, and payment history in accordance with POPIA. This action cannot be undone.</span>
+            </div>
+
+            <div class="field">
+              <label class="label">Confirm Your Password *</label>
+              <div class="control has-icons-left">
+                <input class="input" type="password" placeholder="Enter your password to confirm" x-model="$store.app.authForm.deletePassword" required>
+                <span class="icon is-left" style="color: var(--text-muted);"><i class="fa-solid fa-lock"></i></span>
+              </div>
+            </div>
+
+            <div class="buttons is-centered mt-4">
+              <button type="submit"
+                      class="button is-danger"
+                      :class="{ 'is-loading': $store.app.isAuthSubmitting }">
+                <i class="fa-solid fa-trash-can mr-2"></i> Permanently Delete Account
+              </button>
+              <button type="button" class="button is-dark" @click="$store.app.closeAuthModal()">Cancel</button>
+            </div>
+          </form>
+        </template>
+
+      </div>
+    </div>
+
   </div>
 
   <!-- Service Worker Registration & Cache Purge -->
@@ -1139,7 +1617,7 @@
     if ('caches' in window) {
       caches.keys().then((keys) => {
         keys.forEach((key) => {
-          if (key !== 'subtracker-cache-v12') {
+          if (key !== 'subtracker-cache-v13') {
             caches.delete(key);
           }
         });
