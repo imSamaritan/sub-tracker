@@ -167,4 +167,48 @@ class Validator
 
         return null;
     }
+
+    /**
+     * Validate Web Push subscription payload (§8.9).
+     *
+     * @param array<string, mixed> $data
+     * @return array<string, string>
+     */
+    public static function validatePushSubscription(array $data): array
+    {
+        $errors = [];
+
+        $endpoint = isset($data['endpoint']) ? trim((string) $data['endpoint']) : '';
+        if ($endpoint === '') {
+            $errors['endpoint'] = 'Push subscription endpoint URL is required.';
+        } elseif (!filter_var($endpoint, FILTER_VALIDATE_URL) || !preg_match('/^https?:\/\//i', $endpoint)) {
+            $errors['endpoint'] = 'Push subscription endpoint must be a valid HTTP/HTTPS URL.';
+        }
+
+        $keys = isset($data['keys']) && is_array($data['keys']) ? $data['keys'] : [];
+        $p256dh = isset($keys['p256dh']) ? trim((string) $keys['p256dh']) : (isset($data['p256dh']) ? trim((string) $data['p256dh']) : '');
+        $auth = isset($keys['auth']) ? trim((string) $keys['auth']) : (isset($data['auth']) ? trim((string) $data['auth']) : '');
+
+        if ($p256dh === '') {
+            $errors['keys.p256dh'] = 'Push subscription p256dh public key is required.';
+        } elseif (mb_strlen($p256dh) > 255) {
+            $errors['keys.p256dh'] = 'Push subscription p256dh key cannot exceed 255 characters.';
+        }
+
+        if ($auth === '') {
+            $errors['keys.auth'] = 'Push subscription auth secret is required.';
+        } elseif (mb_strlen($auth) > 255) {
+            $errors['keys.auth'] = 'Push subscription auth secret cannot exceed 255 characters.';
+        }
+
+        if (isset($data['contentEncoding']) && $data['contentEncoding'] !== '') {
+            $enc = trim((string) $data['contentEncoding']);
+            if (!in_array($enc, ['aes128gcm', 'aesgcm'], true)) {
+                $errors['contentEncoding'] = 'Unsupported content encoding. Must be "aes128gcm" or "aesgcm".';
+            }
+        }
+
+        return $errors;
+    }
 }
+
