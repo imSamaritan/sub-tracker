@@ -33,6 +33,7 @@ function assertTest(string $name, bool $condition, string $details = ''): void {
     }
 }
 
+$_ENV['APP_ENV'] = 'test';
 $app = App::create();
 $container = $app->getContainer();
 $basePath = $app->getBasePath();

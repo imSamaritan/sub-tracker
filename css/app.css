@@ -1188,5 +1188,24 @@ html.app-installed .pwa-install-btn {
   border-color: rgba(217, 119, 6, 0.35) !important;
 }
 
+/* Settings Tab Input Border-Radius Removal & Salary Prefix Addon Button */
+.settings-input-no-radius,
+.field.has-addons .control .input.settings-input-no-radius {
+  border-radius: 0 !important;
+}
 
+.salary-prefix-btn,
+.button.is-static.salary-prefix-btn {
+  background-color: #1e293b !important;
+  color: #ffffff !important;
+  border-color: var(--border-glass) !important;
+  font-weight: 700;
+}
 
+[data-theme="light"] .salary-prefix-btn,
+[data-theme="light"] .button.is-static.salary-prefix-btn {
+  background-color: #e2e8f0 !important;
+  color: #0f172a !important;
+  border-color: rgba(0, 0, 0, 0.15) !important;
+  font-weight: 700;
+}

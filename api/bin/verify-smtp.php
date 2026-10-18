@@ -60,6 +60,13 @@ try {
 
     MailService::clearTestSpool();
 
+    if (!$liveMode) {
+        $_ENV['APP_ENV'] = 'test';
+        $app = App::create(dirname(__DIR__));
+        $container = $app->getContainer();
+        $mailService = $container->get(MailService::class);
+    }
+
     $sampleVerifyToken = bin2hex(random_bytes(16));
     $sampleResetToken = bin2hex(random_bytes(16));
 
@@ -72,13 +79,21 @@ try {
 
     $verifyLinkValid = $verifyMsg !== null
         && str_contains($verifyMsg['html'], '/#verify?token=' . urlencode($sampleVerifyToken))
+        && str_contains($verifyMsg['html'], '/#copy-token?type=verify&token=' . urlencode($sampleVerifyToken))
+        && str_contains($verifyMsg['html'], '<div id="verify-token-val" class="token-value">' . $sampleVerifyToken . '</div>')
+        && str_contains($verifyMsg['html'], 'id="copy-verify-token-btn"')
         && str_contains($verifyMsg['text'], '/#verify?token=' . urlencode($sampleVerifyToken))
+        && str_contains($verifyMsg['text'], $sampleVerifyToken)
         && !str_contains($verifyMsg['html'], '{{')
         && !str_contains($verifyMsg['text'], '{{');
 
     $resetLinkValid = $resetMsg !== null
         && str_contains($resetMsg['html'], '/#reset?token=' . urlencode($sampleResetToken))
+        && str_contains($resetMsg['html'], '/#copy-token?type=reset&token=' . urlencode($sampleResetToken))
+        && str_contains($resetMsg['html'], '<div id="reset-token-val" class="token-value">' . $sampleResetToken . '</div>')
+        && str_contains($resetMsg['html'], 'id="copy-reset-token-btn"')
         && str_contains($resetMsg['text'], '/#reset?token=' . urlencode($sampleResetToken))
+        && str_contains($resetMsg['text'], $sampleResetToken)
         && !str_contains($resetMsg['html'], '{{')
         && !str_contains($resetMsg['text'], '{{');
 

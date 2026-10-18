@@ -4,6 +4,9 @@ Thank you for creating an account with SubTracker. Please verify your email addr
 
 {{verifyUrl}}
 
+Verification Token (copy and paste into the app):
+{{token}}
+
 This verification link will expire in 24 hours.
 
 If you did not sign up for SubTracker, please disregard this email.
