@@ -451,30 +451,6 @@
           <p class="is-size-7" style="color: var(--text-muted);">Track upcoming dates & manage alerts</p>
         </div>
 
-        <!-- Push Notification Control Card -->
-        <div class="glass-panel p-4 mb-4">
-          <div class="is-flex is-justify-content-space-between is-align-items-center mb-2">
-            <div class="is-flex is-align-items-center" style="gap: 10px;">
-              <span class="icon is-medium" style="color: #f59e0b;"><i class="fa-solid fa-bell fa-lg"></i></span>
-              <div>
-                <div class="has-text-weight-bold is-size-6">Device Push Notifications</div>
-                <div class="is-size-7" style="color: var(--text-muted);">Get alerts before bills are due</div>
-              </div>
-            </div>
-            <button class="button is-small is-rounded" 
-                    :class="SubNotifier.getPermissionStatus() === 'granted' ? 'is-success is-light' : 'is-primary'"
-                    @click="$store.app.requestNotificationPermission()">
-              <span x-text="SubNotifier.getPermissionStatus() === 'granted' ? 'Enabled' : 'Enable'"></span>
-            </button>
-          </div>
-          <div class="is-flex is-justify-content-space-between is-align-items-center mt-3 pt-2" style="border-top: 1px solid rgba(255,255,255,0.06);">
-            <span class="is-size-7" style="color: var(--text-dim);">Test system alert sound & popup</span>
-            <button class="button is-dark is-small is-rounded" style="background: rgba(255,255,255,0.06); font-size: 0.72rem;" @click="$store.app.testNotification()">
-              <i class="fa-solid fa-paper-plane mr-1"></i> Send Test Alert
-            </button>
-          </div>
-        </div>
-
         <!-- Timeline Section -->
         <div class="mb-5">
           <h3 class="has-text-weight-semibold is-size-6 mb-3" style="color: #cbd5e1;">All Bills Chronological</h3>
@@ -588,6 +564,24 @@
           </template>
         </div>
 
+        <!-- Push Notification Control Card -->
+        <div class="glass-panel p-4 mb-4">
+          <div class="is-flex is-justify-content-space-between is-align-items-center">
+            <div class="is-flex is-align-items-center" style="gap: 10px;">
+              <span class="icon is-medium" style="color: #f59e0b;"><i class="fa-solid fa-bell fa-lg"></i></span>
+              <div>
+                <div class="has-text-weight-bold is-size-6">Device Push Notifications</div>
+                <div class="is-size-7" style="color: var(--text-muted);">Get alerts before bills are due</div>
+              </div>
+            </div>
+            <button class="button is-small is-rounded" 
+                    :class="$store.app.notificationPermission === 'granted' ? 'is-success is-light' : 'is-primary'"
+                    @click="$store.app.requestNotificationPermission()">
+              <span x-text="$store.app.notificationPermission === 'granted' ? 'Enabled' : 'Enable'"></span>
+            </button>
+          </div>
+        </div>
+
         <!-- Appearance & Theme Mode Card -->
         <div class="glass-panel p-4 mb-4">
           <h3 class="has-text-weight-semibold is-size-6 mb-2" style="color: #a5b4fc;">
@@ -629,10 +623,10 @@
             <label class="label">Monthly Take-Home Salary (ZAR)</label>
             <div class="field has-addons">
               <p class="control">
-                <a class="button is-static" style="background: #1e293b; color: white; border-color: var(--border-glass);">R</a>
+                <a class="button is-static salary-prefix-btn">R</a>
               </p>
               <p class="control is-expanded">
-                <input class="input" type="number" step="100" x-model="$store.app.salaryInput">
+                <input class="input settings-input-no-radius" type="number" step="100" x-model="$store.app.salaryInput">
               </p>
               <p class="control">
                 <button class="button is-primary" style="background: var(--accent-primary-gradient);" @click="$store.app.saveSalary()">Save</button>
@@ -643,7 +637,7 @@
 
           <div class="field mt-3">
             <label class="label">Currency Format</label>
-            <input class="input" type="text" value="South African Rand (ZAR - R)" disabled style="opacity: 0.7;">
+            <input class="input settings-input-no-radius" type="text" value="South African Rand (ZAR - R)" disabled style="opacity: 0.7;">
           </div>
         </div>
 
@@ -1422,9 +1416,20 @@
             <form @submit.prevent="$store.app.submitVerifyToken()">
               <div class="field">
                 <label class="label">Verification Token</label>
-                <div class="control has-icons-left">
-                  <input class="input" type="text" placeholder="Paste 64-character token from email..." x-model="$store.app.authForm.verifyToken" required>
-                  <span class="icon is-left" style="color: var(--text-muted);"><i class="fa-solid fa-key"></i></span>
+                <div class="field has-addons mb-0">
+                  <div class="control has-icons-left is-expanded">
+                    <input class="input" type="text" placeholder="Paste 64-character token from email..." x-model="$store.app.authForm.verifyToken" required>
+                    <span class="icon is-left" style="color: var(--text-muted);"><i class="fa-solid fa-key"></i></span>
+                  </div>
+                  <div class="control" x-show="$store.app.authForm.verifyToken">
+                    <button type="button"
+                            class="button is-dark"
+                            style="background: rgba(99, 102, 241, 0.2); color: #a5b4fc; border-color: var(--border-glass);"
+                            title="Copy token to clipboard"
+                            @click="$store.app.copyTextToClipboard($store.app.authForm.verifyToken); $store.app.triggerToast('Verification token copied to clipboard! 📋', 'is-info')">
+                      <i class="fa-regular fa-copy"></i>
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -1513,9 +1518,20 @@
           <form @submit.prevent="$store.app.submitResetPassword()">
             <div class="field">
               <label class="label">Reset Token *</label>
-              <div class="control has-icons-left">
-                <input class="input" type="text" placeholder="Paste reset token from email" x-model="$store.app.authForm.resetToken" required>
-                <span class="icon is-left" style="color: var(--text-muted);"><i class="fa-solid fa-key"></i></span>
+              <div class="field has-addons mb-0">
+                <div class="control has-icons-left is-expanded">
+                  <input class="input" type="text" placeholder="Paste reset token from email" x-model="$store.app.authForm.resetToken" required>
+                  <span class="icon is-left" style="color: var(--text-muted);"><i class="fa-solid fa-key"></i></span>
+                </div>
+                <div class="control" x-show="$store.app.authForm.resetToken">
+                  <button type="button"
+                          class="button is-dark"
+                          style="background: rgba(99, 102, 241, 0.2); color: #a5b4fc; border-color: var(--border-glass);"
+                          title="Copy token to clipboard"
+                          @click="$store.app.copyTextToClipboard($store.app.authForm.resetToken); $store.app.triggerToast('Reset token copied to clipboard! 📋', 'is-info')">
+                    <i class="fa-regular fa-copy"></i>
+                  </button>
+                </div>
               </div>
             </div>
 

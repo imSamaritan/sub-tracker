@@ -28,15 +28,20 @@ class MailService
     {
         $appUrl = rtrim($this->settings['app_url'] ?? 'http://localhost/projects/sub-tracker', '/');
         $verifyUrl = $appUrl . '/#verify?token=' . urlencode($plainToken);
+        $copyTokenUrl = $appUrl . '/#copy-token?type=verify&token=' . urlencode($plainToken);
 
         $html = $this->renderTemplate('verify-email.html', [
             'displayName' => htmlspecialchars($displayName, ENT_QUOTES, 'UTF-8'),
             'verifyUrl' => $verifyUrl,
+            'copyTokenUrl' => $copyTokenUrl,
+            'token' => htmlspecialchars($plainToken, ENT_QUOTES, 'UTF-8'),
         ]);
 
         $text = $this->renderTemplate('verify-email.txt', [
             'displayName' => $displayName,
             'verifyUrl' => $verifyUrl,
+            'copyTokenUrl' => $copyTokenUrl,
+            'token' => $plainToken,
         ]);
 
         return $this->send($toEmail, $displayName, 'Verify your SubTracker account', $html, $text, $plainToken);
@@ -49,15 +54,20 @@ class MailService
     {
         $appUrl = rtrim($this->settings['app_url'] ?? 'http://localhost/projects/sub-tracker', '/');
         $resetUrl = $appUrl . '/#reset?token=' . urlencode($plainToken);
+        $copyTokenUrl = $appUrl . '/#copy-token?type=reset&token=' . urlencode($plainToken);
 
         $html = $this->renderTemplate('reset-password.html', [
             'displayName' => htmlspecialchars($displayName, ENT_QUOTES, 'UTF-8'),
             'resetUrl' => $resetUrl,
+            'copyTokenUrl' => $copyTokenUrl,
+            'token' => htmlspecialchars($plainToken, ENT_QUOTES, 'UTF-8'),
         ]);
 
         $text = $this->renderTemplate('reset-password.txt', [
             'displayName' => $displayName,
             'resetUrl' => $resetUrl,
+            'copyTokenUrl' => $copyTokenUrl,
+            'token' => $plainToken,
         ]);
 
         return $this->send($toEmail, $displayName, 'Reset your SubTracker password', $html, $text, $plainToken);

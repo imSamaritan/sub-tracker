@@ -163,6 +163,7 @@ assertTest(
 // =========================================================================
 echo "\n--- 4. Full End-to-End Acceptance Checklist Verification (§14) ---\n";
 
+$_ENV['APP_ENV'] = 'test';
 $app = App::create();
 $container = $app->getContainer();
 $pdo = $container->get(PDO::class);

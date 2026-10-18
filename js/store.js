@@ -410,6 +410,9 @@ document.addEventListener('alpine:init', () => {
     // Temp salary input
     salaryInput: 28500,
 
+    // Reactive Browser Notification Permission State ('default' | 'granted' | 'denied' | 'unsupported')
+    notificationPermission: SubNotifier.getPermissionStatus(),
+
     // Notification Toast
     toast: {
       show: false,
@@ -434,10 +437,38 @@ document.addEventListener('alpine:init', () => {
         this.canInstallPwa = true;
       }
 
-      // 4. Check and synchronize app installation status
+      // 4. Check and synchronize app installation status & notification permission
       this.checkAndSyncInstallState();
+      this.notificationPermission = SubNotifier.getPermissionStatus();
+      if (navigator.permissions && navigator.permissions.query) {
+        navigator.permissions.query({ name: 'notifications' }).then((permStatus) => {
+          this.notificationPermission = SubNotifier.getPermissionStatus();
+          permStatus.onchange = () => {
+            this.notificationPermission = SubNotifier.getPermissionStatus();
+          };
+        }).catch(() => {});
+      }
 
-      // 5. Listen for hash routes (#verify?token=..., #reset?token=..., #calendar)
+      // 5. Listen for cross-tab token copy broadcasts and hash routes (#verify?token=..., #reset?token=..., #copy-token?..., #calendar)
+      window.addEventListener('storage', (e) => {
+        if (e.key === 'subtracker_copied_token' && e.newValue) {
+          try {
+            const payload = JSON.parse(e.newValue);
+            if (payload && payload.token) {
+              if (payload.type === 'reset') {
+                this.authForm.resetToken = payload.token;
+                this.openAuthModal('reset-password');
+                this.authSuccess = 'Reset token copied & filled in! Enter your new password below.';
+              } else {
+                this.authForm.verifyToken = payload.token;
+                this.openAuthModal('verify-notice');
+                this.authSuccess = 'Verification token copied & filled in! Click "Verify Email & Sign In" below.';
+              }
+              this.triggerToast('Token copied & filled in automatically! 🔑', 'is-success');
+            }
+          } catch (err) {}
+        }
+      });
       window.addEventListener('hashchange', () => this.handleUrlHash());
       await this.handleUrlHash();
 
@@ -448,12 +479,40 @@ document.addEventListener('alpine:init', () => {
 
       // 7. Check notification permissions and trigger daily scan
       setTimeout(() => {
+        this.notificationPermission = SubNotifier.getPermissionStatus();
         SubNotifier.checkAndNotifySystem(this.subscriptions);
       }, 1000);
     },
 
     /**
-     * Handle deep-link URL hash routes (#verify?token=..., #reset?token=..., #calendar)
+     * Copy a token string to clipboard with fallback
+     */
+    async copyTextToClipboard(text) {
+      if (!text) return false;
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(text);
+          return true;
+        }
+      } catch (e) {}
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        const ok = document.execCommand('copy');
+        document.body.removeChild(ta);
+        return ok;
+      } catch (e) {
+        return false;
+      }
+    },
+
+    /**
+     * Handle deep-link URL hash routes (#verify?token=..., #reset?token=..., #copy-token?..., #calendar)
      */
     async handleUrlHash() {
       const hash = window.location.hash || '';
@@ -461,6 +520,38 @@ document.addEventListener('alpine:init', () => {
 
       if (hash === '#calendar') {
         this.activeTab = 'calendar';
+        return;
+      }
+
+      if (hash.startsWith('#copy-token')) {
+        const queryIdx = hash.indexOf('?');
+        const params = new URLSearchParams(queryIdx !== -1 ? hash.slice(queryIdx + 1) : '');
+        const token = (params.get('token') || '').trim();
+        const type = params.get('type') === 'reset' ? 'reset' : 'verify';
+        history.replaceState(null, '', window.location.pathname + window.location.search);
+
+        if (token) {
+          await this.copyTextToClipboard(token);
+          try {
+            localStorage.setItem('subtracker_copied_token', JSON.stringify({
+              type,
+              token,
+              ts: Date.now()
+            }));
+          } catch (e) {}
+
+          if (type === 'reset') {
+            this.authForm.resetToken = token;
+            this.openAuthModal('reset-password');
+            this.authSuccess = 'Reset token copied to clipboard and filled in below!';
+            this.triggerToast('Reset token copied to clipboard! 📋', 'is-success');
+          } else {
+            this.authForm.verifyToken = token;
+            this.openAuthModal('verify-notice');
+            this.authSuccess = 'Verification token copied to clipboard and filled in! Press "Verify Email & Sign In" to continue.';
+            this.triggerToast('Verification token copied to clipboard! 📋', 'is-success');
+          }
+        }
         return;
       }
 
@@ -720,7 +811,15 @@ document.addEventListener('alpine:init', () => {
     async submitVerifyToken(tokenOverride = null) {
       this.authError = '';
       this.authSuccess = '';
-      const token = (tokenOverride || this.authForm.verifyToken || '').trim();
+      let token = (tokenOverride || this.authForm.verifyToken || '').trim();
+
+      if (token.includes('token=')) {
+        const match = token.match(/[?&]token=([a-fA-F0-9]+)/);
+        if (match && match[1]) {
+          token = match[1];
+          this.authForm.verifyToken = token;
+        }
+      }
 
       if (!token) {
         this.authError = 'Please enter the verification token from your email.';
@@ -811,8 +910,16 @@ document.addEventListener('alpine:init', () => {
     async submitResetPassword() {
       this.authError = '';
       this.authSuccess = '';
-      const token = (this.authForm.resetToken || '').trim();
+      let token = (this.authForm.resetToken || '').trim();
       const password = this.authForm.newPassword || '';
+
+      if (token.includes('token=')) {
+        const match = token.match(/[?&]token=([a-fA-F0-9]+)/);
+        if (match && match[1]) {
+          token = match[1];
+          this.authForm.resetToken = token;
+        }
+      }
 
       if (!token || !password) {
         this.authError = 'Please provide your reset token and new password.';
@@ -1319,6 +1426,7 @@ document.addEventListener('alpine:init', () => {
 
     async requestNotificationPermission() {
       const granted = await SubNotifier.requestPermission();
+      this.notificationPermission = granted ? 'granted' : SubNotifier.getPermissionStatus();
       if (granted) {
         this.profile.systemNotificationsEnabled = true;
 

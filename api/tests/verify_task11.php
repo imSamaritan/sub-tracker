@@ -192,6 +192,7 @@ assertTest(
 // -------------------------------------------------------------------------
 echo "\n--- 5. End-to-End Frontend API Workflow Verification ---\n";
 
+$_ENV['APP_ENV'] = 'test';
 $app = App::create();
 $container = $app->getContainer();
 $pdo = $container->get(PDO::class);
