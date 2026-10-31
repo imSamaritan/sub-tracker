@@ -242,6 +242,8 @@ if (!empty($recordedReqs)) {
         str_starts_with($authHeader, 'vapid t=') && str_contains($authHeader, ', k='));
     assertTest("Request contains encrypted aes128gcm payload",
         $encodingHeader === 'aes128gcm' && $bodySize > 64);
+    assertTest("Request sets Urgency: high so push wakes closed/idle mobile devices",
+        $pushReq->getHeaderLine('Urgency') === 'high' && $pushReq->getHeaderLine('TTL') === '259200');
 }
 
 // Verify last_success_at was updated on push_subscriptions
@@ -401,6 +403,28 @@ exec(
 $cliReminderJson = json_decode(implode("\n", $cliReminderOut), true);
 assertTest("CLI script bin/send-reminders.php exits with 0 and valid JSON",
     $cliReminderExit === 0 && is_array($cliReminderJson) && ($cliReminderJson['digestsSent'] ?? -1) === 0);
+
+// Test F: Background subscription renewal (pushsubscriptionchange) & retry when all devices fail
+$renewedEndpoint = "https://fcm.googleapis.com/fcm/send/user_a_renewed_{$suffix}";
+$resRenew = makeRequest($app, 'POST', '/v1/push/subscriptions/renew', [
+    'oldEndpoint' => $deviceAEndpoint,
+    'endpoint' => $renewedEndpoint,
+    'keys' => generateClientPushKeys(),
+    'contentEncoding' => 'aes128gcm',
+]);
+assertTest("POST /v1/push/subscriptions/renew rotates subscription without bearer token (HTTP 201)",
+    $resRenew->getStatusCode() === 201);
+
+// Advance to next day (2026-10-18 = Netflix due_today). First simulate push service outage (500), then recovery (201)
+CurlHttpClient::setMockHandler(fn(RequestInterface $req): ResponseInterface => $resFactory->createResponse(500));
+$failedRunStats = $pushService->processScheduledReminders(new DateTimeImmutable('2026-10-18T07:00:00Z'), false);
+assertTest("When all devices fail, notification_log is rolled back and digestsRetryPending >= 1",
+    ($failedRunStats['digestsSent'] ?? -1) === 0 && ($failedRunStats['digestsRetryPending'] ?? 0) >= 1);
+
+CurlHttpClient::setMockHandler(fn(RequestInterface $req): ResponseInterface => $resFactory->createResponse(201));
+$retryRunStats = $pushService->processScheduledReminders(new DateTimeImmutable('2026-10-18T08:00:00Z'), false);
+assertTest("Next cron run retries and delivers the previously failed due_today reminder",
+    ($retryRunStats['digestsSent'] ?? 0) >= 1 && ($retryRunStats['devicesSent'] ?? 0) >= 1);
 
 // ---------------------------------------------------------
 // 7. Housekeeping Cleanup Script (`bin/cleanup.php`) (§15.8)

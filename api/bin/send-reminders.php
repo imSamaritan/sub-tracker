@@ -43,10 +43,11 @@ try {
         $timestamp = gmdate('Y-m-d\TH:i:s\Z');
         echo "[{$timestamp}] SubTracker Reminder Cron Completed:" . PHP_EOL;
         echo sprintf(
-            "  Users checked: %d | Skipped (<08:00 local): %d | Digests sent: %d | Notifications logged: %d | Devices sent: %d | Devices failed: %d | Expired removed: %d",
+            "  Users checked: %d | Skipped (<08:00 local): %d | Digests sent: %d | Digests to retry: %d | Notifications logged: %d | Devices sent: %d | Devices failed: %d | Expired removed: %d",
             $stats['usersChecked'],
             $stats['usersSkippedBefore8am'],
             $stats['digestsSent'],
+            $stats['digestsRetryPending'],
             $stats['notificationsLogged'],
             $stats['devicesSent'],
             $stats['devicesFailed'],

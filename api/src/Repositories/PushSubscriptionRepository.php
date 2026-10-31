@@ -121,6 +121,25 @@ class PushSubscriptionRepository
     }
 
     /**
+     * Find a single push subscription row by its endpoint URL.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function findByEndpoint(string $endpoint): ?array
+    {
+        $stmt = $this->pdo->prepare("
+            SELECT id, user_id, endpoint, endpoint_hash, p256dh_key, auth_key, content_encoding, failure_count, last_success_at
+            FROM push_subscriptions
+            WHERE endpoint_hash = :hash
+            LIMIT 1
+        ");
+        $stmt->execute([':hash' => hash('sha256', $endpoint)]);
+        $row = $stmt->fetch();
+
+        return $row === false ? null : $row;
+    }
+
+    /**
      * Find all registered push subscriptions for a user.
      *
      * @param int $userId

@@ -48,6 +48,33 @@ class PushController
     }
 
     /**
+     * POST /push/subscriptions/renew
+     * Public: called by the service worker on `pushsubscriptionchange` (app closed, no bearer token).
+     * Body: { oldEndpoint, endpoint, keys: { p256dh, auth }, contentEncoding }
+     */
+    public function renew(Request $request, Response $response): Response
+    {
+        $body = (array) ($request->getParsedBody() ?? []);
+        $oldEndpoint = isset($body['oldEndpoint']) ? trim((string) $body['oldEndpoint']) : '';
+
+        $errors = Validator::validatePushSubscription($body);
+        if ($oldEndpoint === '') {
+            $errors['oldEndpoint'] = 'Previous push subscription endpoint URL is required.';
+        }
+        if (!empty($errors)) {
+            return ApiResponse::error($response, 'VALIDATION_FAILED', 'Some fields are invalid.', 422, $errors);
+        }
+
+        $userAgent = $request->getHeaderLine('User-Agent') ?: null;
+        $subscription = $this->pushService->renew($oldEndpoint, $body, $userAgent);
+        if ($subscription === null) {
+            return ApiResponse::error($response, 'NOT_FOUND', 'Previous push subscription not found.', 404);
+        }
+
+        return ApiResponse::success($response, $subscription, 201);
+    }
+
+    /**
      * DELETE /push/subscriptions (§8.9)
      */
     public function unsubscribe(Request $request, Response $response): Response

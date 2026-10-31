@@ -477,10 +477,21 @@ document.addEventListener('alpine:init', () => {
         await this.fetchServerState();
       }
 
-      // 7. Check notification permissions and trigger daily scan
+      // 7. Check notification permissions, trigger daily scan, and sync push subscription
       setTimeout(() => {
         this.notificationPermission = SubNotifier.getPermissionStatus();
-        SubNotifier.checkAndNotifySystem(this.subscriptions);
+        // Signed-in users with Web Push get reminders from the server cron through the service
+        // worker (even while the app is closed). Only use the on-open local scan as a fallback.
+        const canHaveServerPush = this.isAuthenticated && this.notificationPermission === 'granted';
+        (canHaveServerPush ? SubNotifier.hasPushSubscription() : Promise.resolve(false))
+          .then((serverPushActive) => {
+            if (!serverPushActive) {
+              SubNotifier.checkAndNotifySystem(this.subscriptions);
+            }
+          });
+        if (this.isAuthenticated && this.notificationPermission === 'granted') {
+          this.syncPushSubscription();
+        }
       }, 1000);
     },
 
@@ -746,6 +757,9 @@ document.addEventListener('alpine:init', () => {
         this.closeAuthModal();
 
         await this.fetchServerState();
+        if (SubNotifier.getPermissionStatus() === 'granted') {
+          this.syncPushSubscription();
+        }
         this.triggerToast(`Welcome back, ${user.displayName || user.email}! 🇿🇦`, 'is-success');
       } catch (err) {
         if (err.status === 403 && err.code === 'EMAIL_NOT_VERIFIED') {
@@ -842,6 +856,9 @@ document.addEventListener('alpine:init', () => {
         this.closeAuthModal();
 
         await this.fetchServerState();
+        if (SubNotifier.getPermissionStatus() === 'granted') {
+          this.syncPushSubscription();
+        }
         this.triggerToast('Email verified! Welcome to SubTracker 🎉', 'is-success');
       } catch (err) {
         this.openAuthModal('verify-notice');
@@ -977,8 +994,7 @@ document.addEventListener('alpine:init', () => {
 
     async logout() {
       try {
-        const pushEndpoint = await SubNotifier.getPushEndpoint();
-        await StorageRepository.request('POST', '/auth/logout', pushEndpoint ? { pushEndpoint } : {});
+        await StorageRepository.request('POST', '/auth/logout', {});
       } catch (e) {}
 
       StorageRepository.clearSession();
@@ -1424,6 +1440,29 @@ document.addEventListener('alpine:init', () => {
       }, 3500);
     },
 
+    async syncPushSubscription() {
+      if (!this.isAuthenticated) return;
+      if (SubNotifier.getPermissionStatus() !== 'granted') return;
+      try {
+        const keyRes = await StorageRepository.request('GET', '/push/vapid-public-key', null, { auth: false });
+        const publicKey = keyRes.data && keyRes.data.publicKey;
+        if (publicKey) {
+          const pushSub = await SubNotifier.subscribeToPush(publicKey);
+          if (pushSub) {
+            await StorageRepository.request('POST', '/push/subscriptions', pushSub);
+            if (!this.profile.systemNotificationsEnabled) {
+              this.profile.systemNotificationsEnabled = true;
+              await StorageRepository.request('PATCH', '/profile', {
+                systemNotificationsEnabled: true
+              });
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('Push subscription sync warning:', err);
+      }
+    },
+
     async requestNotificationPermission() {
       const granted = await SubNotifier.requestPermission();
       this.notificationPermission = granted ? 'granted' : SubNotifier.getPermissionStatus();
@@ -1470,7 +1509,9 @@ document.addEventListener('alpine:init', () => {
     async testNotification() {
       if (this.isAuthenticated) {
         try {
-          await StorageRepository.request('POST', '/push/test');
+          if (SubNotifier.getPermissionStatus() === 'granted') { await this.syncPushSubscription(); }
+          const res = await StorageRepository.request('POST', '/push/test');
+          if (res && res.data && res.data.sent > 0) { this.triggerToast('Test alert dispatched via Web Push!', 'is-info'); return; }
         } catch (err) {
           if (err.status === 429) {
             this.handleApiError(err);

@@ -35,8 +35,8 @@ const SubNotifier = {
     if (!this.isSupported() || Notification.permission !== 'granted') return false;
 
     const defaultOptions = {
-      icon: 'assets/icons/icon-192.svg',
-      badge: 'assets/icons/icon-192.svg',
+      icon: 'assets/icons/icon-192.png',
+      badge: 'assets/icons/icon-192.png',
       vibrate: [200, 100, 200],
       tag: 'subtracker-alert',
       renotify: true,
@@ -129,6 +129,10 @@ const SubNotifier = {
   /**
    * Check and fire push notifications if permission is granted
    * Uses localStorage flag to avoid spamming the user on every page refresh
+   *
+   * NOTE: This is only the *local fallback* (guest/offline mode). Signed-in users with an
+   * active Web Push subscription receive reminders from the server cron via the service
+   * worker even when the app is closed, so the caller skips this for them to avoid duplicates.
    */
   checkAndNotifySystem(subscriptions) {
     if (this.getPermissionStatus() !== 'granted') return;
@@ -140,7 +144,7 @@ const SubNotifier = {
     if (lastNotified === todayStr) return;
 
     const alerts = this.scanUpcomingBills(subscriptions);
-    const urgentAlerts = alerts.filter(a => a.days <= 1);
+    const urgentAlerts = alerts.filter(a => a.days <= 3);
 
     if (urgentAlerts.length > 0) {
       if (urgentAlerts.length === 1) {
@@ -148,12 +152,52 @@ const SubNotifier = {
           body: urgentAlerts[0].message
         });
       } else {
+        const hasDaysAhead = urgentAlerts.some(a => a.days > 1);
+        const bodyText = hasDaysAhead
+          ? `You have ${urgentAlerts.length} bills due in the next 3 days. Open SubTracker to review.`
+          : `You have ${urgentAlerts.length} bills due today or tomorrow. Open SubTracker to review.`;
         this.sendSystemNotification(`${urgentAlerts.length} Subscriptions Due Soon!`, {
-          body: `You have ${urgentAlerts.length} bills due today or tomorrow. Open SubTracker to review.`
+          body: bodyText
         });
       }
       localStorage.setItem('subtracker_last_system_notify_date', todayStr);
     }
+  },
+
+  /**
+   * Compare the VAPID key an existing browser subscription was created with against the
+   * server's current key. A mismatch makes every server push fail with 403, so the device
+   * would never get background notifications.
+   */
+  _subscriptionMatchesKey(subscription, applicationServerKey) {
+    try {
+      const existing = subscription.options && subscription.options.applicationServerKey;
+      if (!existing) return true; // browser does not expose it; assume OK
+      const a = new Uint8Array(existing);
+      if (a.length !== applicationServerKey.length) return false;
+      for (let i = 0; i < a.length; i++) {
+        if (a[i] !== applicationServerKey[i]) return false;
+      }
+      return true;
+    } catch (e) {
+      return true;
+    }
+  },
+
+  /**
+   * Hand push settings to the service worker so it can re-subscribe by itself
+   * (pushsubscriptionchange) while no page is open.
+   */
+  async _sendPushConfigToWorker(registration, endpoint, vapidPublicKey) {
+    try {
+      const worker = registration.active || navigator.serviceWorker.controller;
+      if (!worker) return;
+      const apiBase = new URL(
+        (typeof StorageRepository !== 'undefined' && StorageRepository.BaseUrl) || './api/v1',
+        window.location.href
+      ).toString();
+      worker.postMessage({ type: 'PUSH_CONFIG', apiBase, endpoint, vapidPublicKey });
+    } catch (e) {}
   },
 
   /**
@@ -168,9 +212,17 @@ const SubNotifier = {
       const registration = await navigator.serviceWorker.ready;
       if (!registration || !registration.pushManager) return null;
 
+      const applicationServerKey = SubUtils.urlBase64ToUint8Array(vapidPublicKey);
       let subscription = await registration.pushManager.getSubscription();
+
+      // Re-create stale subscriptions that were made with a different VAPID key
+      if (subscription && !this._subscriptionMatchesKey(subscription, applicationServerKey)) {
+        console.warn('SubTracker: push subscription VAPID key changed, re-subscribing.');
+        try { await subscription.unsubscribe(); } catch (e) {}
+        subscription = null;
+      }
+
       if (!subscription) {
-        const applicationServerKey = SubUtils.urlBase64ToUint8Array(vapidPublicKey);
         subscription = await registration.pushManager.subscribe({
           userVisibleOnly: true,
           applicationServerKey
@@ -182,15 +234,26 @@ const SubNotifier = {
         ? PushManager.supportedContentEncodings
         : ['aes128gcm'];
 
+      await this._sendPushConfigToWorker(registration, json.endpoint, vapidPublicKey);
+
       return {
         endpoint: json.endpoint,
         keys: json.keys || {},
-        contentEncoding: supportedEncodings[0] || 'aes128gcm'
+        // Prefer the RFC 8291 standard encoding whenever the browser supports it
+        contentEncoding: supportedEncodings.includes('aes128gcm') ? 'aes128gcm' : (supportedEncodings[0] || 'aes128gcm')
       };
     } catch (err) {
       console.warn('Web Push subscription skipped or failed:', err);
       return null;
     }
+  },
+
+  /**
+   * True when this browser already holds a Web Push subscription (server reminders active)
+   */
+  async hasPushSubscription() {
+    const endpoint = await this.getPushEndpoint();
+    return !!endpoint;
   },
 
   /**
