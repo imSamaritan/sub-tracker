@@ -19,7 +19,7 @@ final class CreateNotificationLogTable extends AbstractMigration
               ->addColumn('user_id', 'biginteger', ['signed' => false, 'null' => false])
               ->addColumn('subscription_id', 'biginteger', ['signed' => false, 'null' => false])
               ->addColumn('cycle_due_date', 'date', ['null' => false])
-              ->addColumn('alert_type', 'enum', ['values' => ['overdue', 'due_today', 'upcoming'], 'null' => false])
+              ->addColumn('alert_type', 'enum', ['values' => ['upcoming', 'upcoming_3d', 'upcoming_2d', 'due_today', 'overdue'], 'null' => false])
               ->addColumn('channel', 'enum', ['values' => ['push', 'email'], 'default' => 'push'])
               ->addColumn('sent_at', 'datetime', ['default' => 'CURRENT_TIMESTAMP'])
               ->addIndex(['user_id', 'subscription_id', 'cycle_due_date', 'alert_type', 'channel'], ['unique' => true, 'name' => 'uq_notification_log_dedup'])

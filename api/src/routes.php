@@ -99,6 +99,10 @@ return function (App $app): void {
         // Public endpoint: VAPID public key
         $group->get('/vapid-public-key', [\SubTracker\Controllers\PushController::class, 'vapidPublicKey']);
 
+        // Public endpoint: service worker re-registers a rotated subscription while the app is closed.
+        // Ownership is proven by the previous (secret) endpoint URL.
+        $group->post('/subscriptions/renew', [\SubTracker\Controllers\PushController::class, 'renew']);
+
         // Authenticated + Verified Email endpoints
         $group->post('/subscriptions', [\SubTracker\Controllers\PushController::class, 'subscribe'])
             ->add($verifiedMiddleware)
